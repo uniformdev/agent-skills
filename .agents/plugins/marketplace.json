@@ -1,0 +1,15 @@
+{
+  "name": "uniformdev",
+  "description": "Official Uniform agent skills and MCP server.",
+  "owner": {
+    "name": "Uniform",
+    "url": "https://uniform.dev"
+  },
+  "plugins": [
+    {
+      "name": "uniformdev",
+      "source": "./",
+      "description": "Build with Uniform: framework integrations, experience modeling, Mesh, assets, and the Uniform MCP server."
+    }
+  ]
+}

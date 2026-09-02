@@ -1,0 +1,20 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "uniformdev",
+  "description": "Build with Uniform: framework integrations, experience modeling, Mesh, assets, and the Uniform MCP server.",
+  "author": {
+    "name": "Uniform Systems, Inc.",
+    "url": "https://uniform.dev"
+  },
+  "homepage": "https://docs.uniform.app",
+  "repository": "https://github.com/uniformdev/agent-skills",
+  "license": "MIT",
+  "keywords": [
+    "uniform",
+    "cms",
+    "dxp",
+    "personalization",
+    "nextjs",
+    "mesh"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "uniformdev",
+  "displayName": "Uniform",
+  "description": "Build with Uniform: framework integrations, experience modeling, Mesh, assets, and the Uniform MCP server.",
+  "author": {
+    "name": "Uniform Systems, Inc.",
+    "url": "https://uniform.dev"
+  },
+  "homepage": "https://docs.uniform.app",
+  "repository": "https://github.com/uniformdev/agent-skills",
+  "license": "MIT",
+  "keywords": [
+    "uniform",
+    "cms",
+    "dxp",
+    "personalization",
+    "nextjs",
+    "mesh"
+  ],
+  "logo": "assets/logo.png",
+  "mcp": "./generated/cursor/mcp.json"
+}

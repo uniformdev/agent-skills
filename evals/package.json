@@ -1,0 +1,30 @@
+{
+  "name": "@uniformdev/skill-evals",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eval": "agent-eval run baseline with-skill; code=$?; node scripts/report.mjs; exit $code",
+    "eval:status": "agent-eval status",
+    "eval:smoke": "agent-eval run baseline with-skill --smoke",
+    "eval:mesh": "agent-eval run mesh-claude-baseline mesh-claude-skill mesh-codex-baseline mesh-codex-skill; code=$?; node scripts/report.mjs; exit $code",
+    "eval:mesh:claude": "agent-eval run mesh-claude-baseline mesh-claude-skill; code=$?; node scripts/report.mjs; exit $code",
+    "eval:mesh:codex": "agent-eval run mesh-codex-baseline mesh-codex-skill; code=$?; node scripts/report.mjs; exit $code",
+    "eval:mesh:copilot": "agent-eval run mesh-copilot-baseline mesh-copilot-skill; code=$?; node scripts/report.mjs; exit $code",
+    "eval:mesh:cursor": "agent-eval run mesh-cursor-baseline mesh-cursor-skill; code=$?; node scripts/report.mjs; exit $code",
+    "eval:mesh:smoke": "agent-eval run mesh-claude-skill mesh-codex-skill --smoke",
+    "playground": "agent-eval playground"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vercel/agent-eval": "^1.5.1",
+    "@vercel/agent-eval-playground": "^0.1.3",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "overrides": {
+    "@vercel/agent-eval-playground": {
+      "next": "16.1.7"
+    }
+  }
+}

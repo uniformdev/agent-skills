@@ -1,0 +1,10 @@
+# Build output of scripts/build-plugins.mjs. Marking these generated collapses them in
+# pull request diffs and keeps them out of language statistics — review plugin.source.json
+# instead, which is what actually changed.
+generated/**            linguist-generated=true
+# Anchored: an unanchored `plugin.json` would also match the per-client manifests below.
+/plugin.json            linguist-generated=true
+.claude-plugin/*.json   linguist-generated=true
+.cursor-plugin/*.json   linguist-generated=true
+.codex-plugin/*.json    linguist-generated=true
+.agents/plugins/*.json  linguist-generated=true

@@ -1,0 +1,61 @@
+{
+  "$comment": "Source of truth for every plugin manifest in this repo. Hand-edit this file, then run `npm run build:plugins`. Never hand-edit anything under generated/ or the .*-plugin/ directories.",
+
+  "name": "uniformdev",
+  "displayName": "Uniform",
+  "description": "Build with Uniform: framework integrations, experience modeling, Mesh, assets, and the Uniform MCP server.",
+  "author": {
+    "name": "Uniform Systems, Inc.",
+    "url": "https://uniform.dev"
+  },
+  "homepage": "https://docs.uniform.app",
+  "repository": "https://github.com/uniformdev/agent-skills",
+  "license": "MIT",
+  "keywords": ["uniform", "cms", "dxp", "personalization", "nextjs", "mesh"],
+
+  "$comment_logo": "Repo-relative path to the plugin mark. Only Cursor and Codex render it, and they want different syntax: Cursor takes a bare repo-relative path (it resolves to a raw.githubusercontent.com URL at the installed commit), while Codex requires a `./`-prefixed path it resolves locally inside the installed package. The generator emits both from this one value. Claude Code's manifest schema and the portable Agent Plugins manifest have no logo field at all, so they omit it.",
+  "logo": "assets/logo.png",
+
+  "$comment_version": "`version` is deliberately omitted. Claude Code falls back to the git commit SHA when it is unset, so every commit to main is picked up as an update. Setting it would mean users only get changes when someone remembers to bump it.",
+
+  "marketplace": {
+    "name": "uniformdev",
+    "description": "Official Uniform agent skills and MCP server.",
+    "owner": {
+      "name": "Uniform",
+      "url": "https://uniform.dev"
+    }
+  },
+
+  "mcp": {
+    "serverName": "uniform",
+    "type": "http",
+    "urlTemplate": "https://{host}/projects/{projectId}/mcp",
+    "headers": {
+      "x-api-key": "{apiKey}"
+    },
+    "$comment_credentials": "Each credential is bound differently per agent: Claude prompts for it via userConfig, Cursor and Codex read it from the environment. The generator emits the right syntax for each.",
+    "$comment_required": "Nothing is marked required, on purpose. The skills are the reason most people install this and they need no credentials, so a required field would put a credential prompt in front of every install. Unconfigured, the MCP server is listed but cannot connect; the descriptions below say how to fill it in later. The generator omits `required` entirely when this is false.",
+    "credentials": {
+      "projectId": {
+        "env": "UNIFORM_PROJECT_ID",
+        "title": "Uniform project ID",
+        "description": "Optional — needed only for the Uniform MCP server, not for the skills. Found in your Uniform project settings, or via `Copy as mcp json` in the dashboard. You can add it later with `/plugin configure`.",
+        "required": false
+      },
+      "apiKey": {
+        "env": "UNIFORM_API_KEY",
+        "title": "Uniform API key",
+        "description": "Optional — needed only for the Uniform MCP server, not for the skills. A Service Account key or Personal Access Token with the Developer role on the project. You can add it later with `/plugin configure`.",
+        "required": false,
+        "sensitive": true
+      },
+      "host": {
+        "env": "UNIFORM_AI_HOST",
+        "title": "Uniform AI host",
+        "description": "Region-specific MCP host. Leave the default unless your team is in another region.",
+        "default": "ai.uniform.global"
+      }
+    }
+  }
+}

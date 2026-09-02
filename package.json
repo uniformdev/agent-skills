@@ -1,0 +1,44 @@
+{
+  "name": "@uniformdev/ai-skills",
+  "version": "0.0.1",
+  "description": "AI agent skills and plugins for Uniform",
+  "private": true,
+  "scripts": {
+    "validate": "node scripts/validate-skills.mjs",
+    "typecheck:templates": "tsc -p tsconfig.templates.json",
+    "build:plugins": "node scripts/build-plugins.mjs",
+    "validate:plugins": "node scripts/build-plugins.mjs --check",
+    "eval": "npm run eval --prefix evals",
+    "eval:status": "npm run eval:status --prefix evals",
+    "eval:smoke": "npm run eval:smoke --prefix evals",
+    "playground": "npm run playground --prefix evals"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uniformdev/agent-skills.git"
+  },
+  "keywords": [
+    "uniform",
+    "ai",
+    "agent",
+    "skills",
+    "claude",
+    "cursor"
+  ],
+  "author": "Uniform Systems, Inc.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/uniformdev/agent-skills/issues"
+  },
+  "homepage": "https://github.com/uniformdev/agent-skills#readme",
+  "devDependencies": {
+    "@types/node": "26.1.2",
+    "@types/react": "19.2.18",
+    "@uniformdev/automations-sdk": "20.72.3-alpha.45",
+    "@uniformdev/canvas": "20.72.3-alpha.45",
+    "@uniformdev/context": "20.72.3-alpha.45",
+    "skills-ref": "^0.1.5",
+    "typescript": "7.0.2",
+    "zod": "4.4.3"
+  }
+}

@@ -1,0 +1,61 @@
+name: Skill evals
+
+# Manually triggered (Actions tab -> Skill evals -> Run workflow).
+# Deliberately NOT wired to pull requests: each agent session is a real model run and
+# costs real money, so a human decides when to spend it.
+on:
+  workflow_dispatch:
+    inputs:
+      experiments:
+        description: 'Experiments to run (space-separated)'
+        required: false
+        default: 'baseline with-skill'
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: evals
+    env:
+      AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # The Vercel team/project the sandbox usage is attributed to. Identifiers, not
+      # secrets — configure them as repository variables.
+      VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      # Real Uniform test-project credentials (optional; fixtures fall back to
+      # placeholders). Configure as repository secrets when API-backed evals land.
+      UNIFORM_API_KEY: ${{ secrets.UNIFORM_EVAL_API_KEY }}
+      UNIFORM_PROJECT_ID: ${{ secrets.UNIFORM_EVAL_PROJECT_ID }}
+      UNIFORM_PREVIEW_SECRET: ${{ secrets.UNIFORM_EVAL_PREVIEW_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: evals/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run evals
+        run: |
+          mkdir -p results
+          npx agent-eval run ${{ inputs.experiments }} --ack-failures
+
+      - name: Render report
+        if: always()
+        run: node scripts/report.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: evals/results/
+          retention-days: 30
+          if-no-files-found: warn

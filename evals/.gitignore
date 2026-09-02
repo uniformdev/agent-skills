@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+# fixture .env files contain placeholders only and must be committed
+!evals/*/.env
+# agent-eval requires results/ to exist before it will run anything, so the directory
+# is committed (via .gitkeep) while its contents stay ignored.
+results/*
+!results/.gitkeep
+*.log
+.DS_Store

@@ -1,0 +1,14 @@
+.DS_Store
+.idea/
+node_modules/
+
+examples/
+
+# Archives are never committed — `skills/` is the plugin payload, so anything dropped
+# there ships to every user.
+*.zip
+
+# Claude Code local state. The tracked skills symlink under .claude/skills is
+# deliberate; everything else here is per-developer.
+.claude/settings.local.json
+.claude/worktrees/
