@@ -1,7 +1,6 @@
 # Editor state API
 
-> ⚠️ The SDK tags this `@deprecated` to mean **experimental — subject to change without
-> notice**, not "being removed". Requires `@uniformdev/mesh-sdk` **≥ 20.66.1**.
+> ⚠️ Requires `@uniformdev/mesh-sdk` **≥ 20.66.1**.
 
 `editorState` is an imperative handle on the composition or entry the author is editing. Its
 main use is the one thing a location otherwise can't do: **mutate the surrounding content in
