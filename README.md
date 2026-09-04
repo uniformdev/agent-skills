@@ -115,6 +115,7 @@ host.
 | `uniform-nextjs-app-router` | Guides integration of Uniform CMS with Next.js App Router using the @uniformdev/next-app-router v2 SDK and React Server Components. |
 | `uniform-nextjs-page-router` | Guides integration of Uniform CMS with Next.js Page Router. |
 | `uniform-sdk` | Uniform SDK developer reference covering authentication, CLI configuration, routing, and the content API clients that read and write compositions, entries, and content types. |
+| `uniform-search` | Adds Uniform Search — faceted search on the Uniform Search integration and the @uniformdev/search package — to an existing Next.js App Router site that already renders Uniform… |
 
 <!-- end:skill-inventory -->
 

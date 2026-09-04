@@ -44,8 +44,8 @@ npm run playground    # web UI for results (http://localhost:3000)
 
 Per-skill shortcuts: `eval:mesh`, `eval:forms`, and the
 `eval:mesh:{claude,codex,copilot,cursor}` arms. Each has a `:smoke` variant. The nextjs,
-navigation and automations fixtures are covered by the generic `baseline` / `with-skill` pair,
-so plain `npm run eval` runs them.
+navigation, automations and search fixtures are covered by the generic `baseline` / `with-skill`
+pair, so plain `npm run eval` runs them.
 
 Things that will confuse you if nobody tells you:
 
@@ -217,6 +217,7 @@ the project state.
 | `automations-ai-review` | `uniform-automations` | greenfield, deterministic | AI copy review on a workflow stage: a `*.automation.ts` module, `workflow.transition` binding (not a save event), a CEL filter on workflow/stage **IDs** that stays total, Scout (`defineScoutAutomation` or `ScoutClient`) rather than a third-party model SDK, declared `permissions`, no deploy to the live project |
 | `automations-inbound-sync` | `uniform-automations` | greenfield, deterministic | inbound PIM sync: `incomingWebhook` trigger, a code handler (not Scout) for deterministic work, literal `process.env.UNIFORM_ENV_*` secret reads, `unauthorized` outcome checked before `rawBody` is parsed, `EntryManagementClient` + `permissions`, no secret value in logs |
 | `automations-outbound-sync` | `uniform-automations` | greenfield, deterministic | outbound search-index sync on publish: `entry.published` (not a stage, a save, or an inbound webhook), a code handler (not Scout), a CEL filter on `input.type` using `==` not JS `===`, `fetch` to the downstream URL rather than a vendor SDK, literal `process.env.UNIFORM_ENV_SEARCH_API_KEY`, no deploy to the live project |
+| `search-add-faceted-search` | `uniform-search` | brownfield, deterministic | adding Uniform Search to a correct App Router project: the components and definitions scaffolded with the `create-uniform-search` CLI (asserted from the transcript) rather than reinvented, `@uniformdev/search` installed, the search types registered through the compat adapter without rewriting existing server components, public env vars declared without clobbering existing credentials, the `mono-*` theme actually imported (not just written to disk), definitions staged as the vendored CLI package with `mode: 'create'` next to its config and not in `uniform-data/`, the package authored in the project's default locale, and the push handed to the user (no `sync push`, no MCP mutations) |
 
 Notes on reading particular fixtures:
 
@@ -241,6 +242,16 @@ Notes on reading particular fixtures:
   what the skill claims to teach. Staging both also matches distribution: the plugin ships `skills/`
   whole, so those links always resolve for a real user. Read the delta as the lift of navigation
   *on top of* a correct App Router setup.
+- **`search-add-faceted-search` measures delegation, not reinvention.** `uniform-search` ships no
+  code; it sends the agent to the `create-uniform-search` npm CLI for the components and the
+  definitions package. A cold agent cannot know that CLI exists and is being asked to invent a
+  search stack, so the baseline gap is large by design; the first assertion checks the transcript
+  for the CLI invocation, and the rest target where a with-skill run can still go wrong — the
+  resolver shape (the compat adapter must be gated, not chained, and the existing `Hero` not
+  rewritten), the package staged next to its `create`-mode config, the locale (the fixture's default
+  is `en-US` so the step is exercised, not trivially satisfied), and the hand-off. Deterministic
+  only. The Uniform side — the push, the integration's parameter types, opening the page slot — is
+  not exercised, because fixtures do not call a live project.
 - **Assertions strip comments before matching**, so an agent that quotes a rule back in a comment is
   not credited — or failed — for agreeing with it.
 - **The automations fixtures use the full discovery skip set** (`.claude`, `.agents`, `.cursor`,
@@ -281,3 +292,8 @@ customer or demo project: evals let an agent write to it.
   once sandbox install of the Uniform SDK packages is verified.
 - No automated seed/reset for a Uniform test project yet. That is required before any eval
   that mutates project data, and should be designed with the first API-backed fixture.
+- A fixture with a `postcss.config.*` must use the **object** plugin form
+  (`plugins: { "@tailwindcss/postcss": {} }`), not Next's string-array form. Vitest runs inside
+  the project and loads that config through Vite's PostCSS loader, which rejects string plugins
+  with `Invalid PostCSS Plugin found at: plugins[0]` — the run then dies before `EVAL.ts` executes
+  and reports as `⚠️ ungraded`. Next.js accepts both forms.
