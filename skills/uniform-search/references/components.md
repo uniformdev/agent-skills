@@ -83,3 +83,67 @@ not in the package.
 The definition's `type` parameter (facet type) collides with the reserved `ComponentProps.type`
 (`"searchFacet"`), which the compat adapter spreads last. `SearchFacet.tsx` therefore reads
 `component.parameters.type.value` and falls back to `select`. Keep that if you edit the file.
+
+## Newer components (starter ahead of the published CLI)
+
+The search starter has moved past what `create-uniform-search@0.0.6` scaffolds. The SDK exports
+they need are published (`@uniformdev/search` 0.0.8); the components and definitions arrive with
+the next CLI release. Until `search-components.json` in the project lists their type ids, do not
+write them by hand. Register each one whose type id is in the package (see the mapping rule in
+[install.md](install.md#register-the-components)).
+
+### Search Box Autocomplete (`searchBoxAutocomplete`)
+
+`SearchBoxAutocomplete` lives *inside* a Search Engine (`search-top` slot): it takes no
+`queryBy`/`entryUrlMapping` of its own but reads the engine's `performSearch`, `queryBy`,
+`locale`, base filter and active facet selections from `useSearch()`, so suggestions mirror the
+filtered results, and it pushes the typed query into the provider so the results list updates
+as you type. Same `ui/AutocompletePanel.tsx` as the standalone one. Choose it for a results
+page; choose `searchAutocomplete` for a header.
+
+### Recommendations (`recommendations`)
+
+An **async server component**: reads the `ufvd` cookie (`CookieTransitionDataStore` from
+`@uniformdev/context`), reduces the scores with `resolveEnrichmentBoost`, runs one wildcard
+search with `orderBy: 'behavior'` and renders the hits through the same result renderers.
+Parameters: `title`, `contentType` (public id; empty = every type), `boostCategories`
+(comma-separated category ids; empty = every manifest category), `maxRecommendations`
+(default 4), `entryUrlMapping`. Locale comes from the matched route's `dynamicInputs.locale`,
+else `NEXT_PUBLIC_UNIFORM_DEFAULT_LOCALE`.
+
+It has prerequisites the rest of the set does not:
+
+- `@uniformdev/context` as a dependency (for the cookie store).
+- **Next.js cache components** (`cacheComponents: true` in `next.config`, Next 16+):
+  `lib/search/cachedProjectMapPaths.ts` uses `'use cache'` for the per-locale project-map
+  paths, and the per-visitor cookie read is what marks the `<Suspense>` subtree dynamic so the
+  page shell still prerenders. If the project cannot enable cache components, call
+  `fetchPathsByNodeId` from `lib/search/projectMapClient.ts` directly and delete the cached helper.
+- The Context manifest import path in `lib/search/enrichmentCategories.ts`
+  (`@/lib/uniform/manifest.json`) must point at the project's manifest.
+
+Concepts and the Content-API variant of the same idea: `uniform-enrichment-recommendations`.
+The search variant differs in one way that matters — ranking runs in the search engine, so it
+scales to the whole index rather than a fetched page of entries.
+
+### Related Content (`relatedContent`) with Product Card / Article Card
+
+A different mechanism from everything above: **no search request from the site**. `RelatedContent`
+is a heading plus an `items` slot rendered as a card grid. Authors drop Uniform's **Loop**
+component into the slot, point it at a **Uniform Search data resource** — the integration
+registers a `uniformSearch` data connector with two archetypes, `searchQuery` and `curatedList` —
+and place a `productCard` / `articleCard` inside the loop with its parameters bound to the loop
+item's fields (`title`, `description`, `imageUrl`, `url`, plus `price`/`currency`/`rating` or
+`category`/`author`/`publishedDate`). The platform expands the loop during data resolution;
+the components only render children. Use this for editorially curated or query-driven lists
+that should be cached with the page; use `Recommendations` when the list must be per-visitor.
+
+### Click tracking
+
+`SearchList` wraps each hit in a capture-phase `onClickCapture` calling
+`trackClick({ docId, locale })` (present in `@uniformdev/search` 0.0.7) for the integration's
+"top clicked" report. Fire-and-forget; never blocks navigation.
+
+### Retrieval and behavior ranking
+
+See [ranking.md](ranking.md).

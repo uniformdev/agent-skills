@@ -14,8 +14,13 @@ it. Together they push everything the search components need, and nothing the pr
 | Block content types | `pageSize`, `orderBy`, `searchFacet` (backing the `$block` parameters on pagination, sort and facets) |
 | Component patterns | **Search Engine** (a pre-wired results page), **Search Autocomplete** (a header typeahead) |
 
-Check the shipped version with `node -e 'console.log(require("./search-components.json").components.map(c=>c.id))'`
-— a newer CLI may add types (the starter it is synced from already has `searchBoxAutocomplete`).
+Check the shipped version with `node -e 'console.log(require("./search-components.json").components.map(c=>c.id))'`.
+The starter the CLI is synced from is ahead of 0.0.6; a newer CLI release adds
+`searchBoxAutocomplete`, `recommendations`, `relatedContent`, `productCard`, `articleCard`, a
+`retrieval` select on `searchEngine`, `filterBy` + `toleranceLevel` on `searchAutocomplete`,
+and explicit `allowedComponents` on the Search Engine slots. Map what the package lists; see
+[components.md](components.md#newer-components-starter-ahead-of-the-published-cli) for what each
+needs.
 
 Component ids, slots and the parameters the React code reads:
 

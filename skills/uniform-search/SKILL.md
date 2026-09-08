@@ -1,6 +1,6 @@
 ---
 name: uniform-search
-description: Adds Uniform Search — faceted search on the Uniform Search integration and the @uniformdev/search package — to an existing Next.js App Router site that already renders Uniform compositions. Scaffolds the search components, helpers, theme tokens and component definitions with the create-uniform-search CLI, then installs the runtime package, wires the components into resolveComponent, checks env vars and Tailwind tokens, opens the page slot, and hands the definitions push to the user. Use when asked to add search, faceted search, a search results page, typeahead or autocomplete, or search filters to a Uniform site, or to install or wire up the Uniform Search components. Not for Page Router projects or third-party search providers such as Algolia or Coveo.
+description: Adds Uniform Search — faceted search on the Uniform Search integration and the @uniformdev/search package — to an existing Next.js App Router site that already renders Uniform compositions. Scaffolds the search components, helpers, theme tokens and component definitions with the create-uniform-search CLI, then installs the runtime package, wires the components into resolveComponent, checks env vars and Tailwind tokens, opens the page slot, and hands the definitions push to the user. Use when asked to add search, faceted search, a search results page, typeahead or autocomplete, search filters, behavior-ranked or personalized search results and recommendations, semantic vs exact retrieval, or related-content cards to a Uniform site, or to install or wire up the Uniform Search components. Not for Page Router projects or third-party search providers such as Algolia or Coveo.
 license: MIT
 metadata:
   author: uniformdev
@@ -53,6 +53,13 @@ push. Details per step: [references/install.md](references/install.md),
    code from step 2 (`en`, `en-US`). `--no-deploy` keeps the push with the user; `--no-skill`
    stops it installing its own copy of a Claude skill next to this one.
 4. **Install `@uniformdev/search`** with the project's package manager — the CLI does not.
+   Take the latest (0.0.8 adds the ranking exports; 0.0.7 added `trackClick`). Then read what
+   you actually got, because the starter is ahead of what is published:
+   `search-components.json` lists the component types this CLI version ships, and
+   `node_modules/@uniformdev/search/dist/index.d.ts` is the SDK surface you can code against.
+   Anything in [references/components.md](references/components.md#newer-components-starter-ahead-of-the-published-cli)
+   or [references/ranking.md](references/ranking.md) that is not in both is not available yet —
+   do not write it by hand.
 5. **Import the theme tokens** — `styles/search-theme.css` — from the global stylesheet
    (Tailwind v4), or merge its palette into `theme.extend.colors.mono` (v3).
 6. **Environment variables.** Add the three public variables the client reads
@@ -95,6 +102,12 @@ push. Details per step: [references/install.md](references/install.md),
   unknown type — it returns a "Not implemented" component — so it cannot be chained as a
   fallback after the project's resolver. Gate on the search type set first, then fall through
   to the existing logic. If the project already uses the adapter, just add the mappings.
+- **Ranking is configured by authors, not in code.** Retrieval mode is the `retrieval` select on
+  Search Engine (leave it unset unless meaning-based matches are wrong for that placement);
+  behavior relevancy is a sort option in Search Sort. For per-visitor lists without a search
+  page use `Recommendations`; for curated or query-driven lists cached with the page use
+  `RelatedContent` + a Loop over a Uniform Search data resource. Enrichment concepts live in the
+  `uniform-enrichment-recommendations` skill — link, do not restate.
 - **Page size is configured on Search Pagination; order-by on Search Sort.** `SearchEngine`'s
   `orderBy`/`pageSizes` props are deprecated compatibility inputs; never model new content on them.
 - **Search components are client components by design.** Search state is React context. Do not
@@ -127,6 +140,14 @@ push. Details per step: [references/install.md](references/install.md),
   Design Extensions is installed.
 - **`--yes` skips existing files.** Re-running the CLI with `-y` leaves an earlier copy in place;
   without it, existing files are overwritten in non-interactive mode.
+- **Behavior relevancy has two silent preconditions.** Documents indexed before the
+  `enrichmentTags` field existed carry no tags — a reindex is what fills them, a schema save
+  alone does not — and selecting the behavior sort forces keyword retrieval for that request, so
+  hybrid/semantic ranking is off while it is active. Both look like "boosting does nothing".
+- **`Recommendations` is a server component with its own prerequisites** — `@uniformdev/context`,
+  Next.js `cacheComponents`, and the manifest import path in `lib/search/enrichmentCategories.ts`.
+  Copying it into a project without them fails at build time or, for the manifest path, at
+  runtime with an empty category list.
 - **Public env vars are inlined at build time.** The client reads `NEXT_PUBLIC_*`; a value
   added after the build is not picked up until the next build.
 
@@ -144,6 +165,14 @@ push. Details per step: [references/install.md](references/install.md),
   request is a browser-side `POST` with a public key.
 - **The CLI does not install `@uniformdev/search`, write env vars, or edit the resolver.** Its
   "Next steps" note lists what it left for you.
+- **Not scaffolded by `create-uniform-search` 0.0.6** (the current release): the
+  `searchBoxAutocomplete`, `recommendations`, `relatedContent`, `productCard` and `articleCard`
+  definitions and components, `lib/search/retrieval.ts`, `enrichmentCategories.ts`,
+  `cachedProjectMapPaths.ts`, and the `retrieval` parameter on Search Engine. The SDK side
+  (`resolveEnrichmentBoost`, `EnrichmentBoost`, `SearchParams.mode`, the `enrichmentBoost`
+  request field, the `behavior` order-by) **is** published in `@uniformdev/search` 0.0.8. Until a
+  newer CLI ships the components, the SDK exports alone give you nothing to map — verify with
+  the checks in ranking.md before relying on either half.
 
 ## Resources
 
@@ -152,4 +181,7 @@ push. Details per step: [references/install.md](references/install.md),
 - [Definitions](references/definitions.md) — what the package contains, the dedicated config, locale
   detection, the Design Extensions parameter strip, the push hand-off, what the author does in Uniform afterwards
 - [Components](references/components.md) — how the scaffolded components behave at runtime: provider and
-  slots, self-registration, renderers, autocomplete, typo tolerance, highlighting, localization
+  slots, self-registration, renderers, autocomplete, typo tolerance, highlighting, localization, and the
+  newer set the starter ships ahead of the CLI (search-box autocomplete, recommendations, related content + cards)
+- [Ranking](references/ranking.md) — retrieval mode (hybrid vs exact) and behavior relevancy (enrichment
+  boosting): the request contract, where it is wired, and the two silent preconditions

@@ -53,7 +53,8 @@ the root, and a `Set search content locale to "<locale>"` line. The scaffolded f
 
 The CLI does not install it. Detect the package manager from the lockfile and install
 `@uniformdev/search` (peer: React ≥ 18). `getHighlightMatch`, which the scaffolded
-`ui/Highlighted.tsx` imports, exists from `0.0.3`; current is `0.0.7`.
+`ui/Highlighted.tsx` imports, exists from `0.0.3`; `trackClick` from `0.0.7`; the ranking
+exports (`resolveEnrichmentBoost`, `SearchParams.mode`) from `0.0.8`. Install the latest.
 
 ## Theme tokens
 
@@ -120,8 +121,11 @@ export const searchMappings = {
 };
 ```
 
-If the CLI version scaffolded more component files (e.g. `SearchBoxAutocomplete.tsx`), map each
-one whose type id appears in `search-components.json`.
+If the CLI version scaffolded more component files (`SearchBoxAutocomplete.tsx`,
+`Recommendations.tsx`, `RelatedContent.tsx`, `ProductCard.tsx`, `ArticleCard.tsx`), map each one
+whose type id appears in `search-components.json` — and before mapping `Recommendations`, satisfy
+its prerequisites (`@uniformdev/context`, `cacheComponents`, the manifest import path) listed in
+[components.md](components.md#recommendations).
 
 **Project already uses the adapter** (`createAdapterResolveComponentFunction({ mappings })`):
 spread `searchMappings` into its `mappings`. Done.
