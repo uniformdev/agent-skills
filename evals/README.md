@@ -251,7 +251,11 @@ Notes on reading particular fixtures:
   rewritten), the package staged next to its `create`-mode config, the locale (the fixture's default
   is `en-US` so the step is exercised, not trivially satisfied), and the hand-off. Deterministic
   only. The Uniform side — the push, the integration's parameter types, opening the page slot — is
-  not exercised, because fixtures do not call a live project.
+  not exercised, because fixtures do not call a live project. First measured pair (local Docker
+  sandbox, Claude Code on Sonnet): the cold agent hand-rolled a search client and its own
+  components, wrote the definitions as `uniform-data/` YAML, and failed 9 of 10 assertions in
+  about three times the wall-clock; the with-skill run passed every project-state assertion,
+  scaffolding with the CLI and remapping the package to `en-US`.
 - **Assertions strip comments before matching**, so an agent that quotes a rule back in a comment is
   not credited — or failed — for agreeing with it.
 - **The automations fixtures use the full discovery skip set** (`.claude`, `.agents`, `.cursor`,
@@ -297,3 +301,14 @@ customer or demo project: evals let an agent write to it.
   the project and loads that config through Vite's PostCSS loader, which rejects string plugins
   with `Invalid PostCSS Plugin found at: plugins[0]` — the run then dies before `EVAL.ts` executes
   and reports as `⚠️ ungraded`. Next.js accepts both forms.
+- **Transcript assertions are unasserted when no transcript is captured.** With `sandbox: 'docker'`
+  and the direct `claude-code` agent, the runner found no Claude Code JSONL to parse (see
+  `captureClaudeTranscript` in the agent's `run.mjs`), so `__agent_eval__/results.json` carried
+  `o11y: null`. An `EVAL.ts` that dereferences it throws a `TypeError` that reads as a skill failure
+  while measuring nothing. Every process assertion must guard for a missing file or null `o11y`
+  and return — the search and automations fixtures do — and a process claim then counts as
+  unasserted on such runs, not as passed.
+- **Grade inside the sandbox, not from the captured `project/`.** `copyFiles: 'changed'` copies
+  only files the agent touched, so a captured tree needs the fixture overlaid before `EVAL.ts` can
+  run against it, and one captured JSON file arrived with a dropped chunk mid-file. The
+  `outputs/eval.txt` written by the in-sandbox vitest run is the authoritative verdict.

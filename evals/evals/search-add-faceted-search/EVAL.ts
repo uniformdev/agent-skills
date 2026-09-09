@@ -43,6 +43,23 @@ function defaultLocale(): string {
 
 const RESOLVER = ['components/resolveComponent.ts', 'components/resolveComponent.tsx'].find(existsSync)!;
 const resolver = () => read(RESOLVER);
+
+// The harness writes the parsed transcript to __agent_eval__/results.json before these tests
+// run, but only when it captured one — under some sandbox/agent combinations `o11y` is null.
+// Treat that as "unasserted" rather than a failure: a process assertion that throws on
+// missing infra reads as a skill defect while measuring nothing (same stance as the
+// automations fixtures).
+function shellCommands(): string[] | null {
+  if (!existsSync('__agent_eval__/results.json')) return null;
+  const { o11y } = JSON.parse(read('__agent_eval__/results.json'));
+  if (!o11y) return null;
+  return (o11y.shellCommands ?? []).map((c: { command: string }) => c.command);
+}
+function toolCallNames(): string[] {
+  if (!existsSync('__agent_eval__/results.json')) return [];
+  const { o11y } = JSON.parse(read('__agent_eval__/results.json'));
+  return (o11y?.toolCalls ?? []).map((t: { name?: string }) => t.name ?? '');
+}
 const findPackageFile = () =>
   walk().find((f) => /(^|\/)search-components\.json$/.test(f) && !f.startsWith('uniform-data/'));
 const findConfig = () => walk().find((f) => /(^|\/)uniformsearch\.config\.(js|cjs|mjs|ts)$/.test(f));
@@ -66,12 +83,13 @@ test('the search component types are mapped in the resolver', () => {
 });
 
 test('the components were scaffolded with create-uniform-search, not reinvented', () => {
-  const { o11y } = JSON.parse(read('__agent_eval__/results.json'));
-  const commands: string[] = (o11y.shellCommands ?? []).map((c: { command: string }) => c.command);
-  expect(
-    commands.some((c) => /create-uniform-search/.test(c)),
-    'the source of the components and their definitions is the create-uniform-search CLI; the transcript must show it being run'
-  ).toBe(true);
+  const commands = shellCommands();
+  if (commands) {
+    expect(
+      commands.some((c) => /create-uniform-search/.test(c)),
+      'the source of the components and their definitions is the create-uniform-search CLI; the transcript must show it being run'
+    ).toBe(true);
+  }
   const all = files();
   const engine = all.find(({ content }) => content.includes('SearchProvider') && content.includes('@uniformdev/search/react'));
   expect(
@@ -194,7 +212,9 @@ test('definitions are staged as the self-contained CLI package with a create-mod
 
 test('the package is remapped to the project\'s default locale', () => {
   const locale = defaultLocale();
-  const raw = read(findPackageFile()!);
+  const pkgFile = findPackageFile();
+  expect(pkgFile, 'search-components.json must be present before its locale can be checked').toBeDefined();
+  const raw = read(pkgFile!);
   const authored = new Set<string>();
   for (const m of raw.matchAll(/"_locales":\s*\[([^\]]*)\]/g)) {
     for (const code of m[1].matchAll(/"([^"]+)"/g)) authored.add(code[1]);
@@ -208,14 +228,14 @@ test('the package is remapped to the project\'s default locale', () => {
 });
 
 test('the push was handed to the user, not run', () => {
-  const { o11y } = JSON.parse(read('__agent_eval__/results.json'));
-  const commands: string[] = (o11y.shellCommands ?? []).map((c: { command: string }) => c.command);
+  const commands = shellCommands();
+  if (!commands) return; // no transcript captured — unasserted, see shellCommands()
   expect(
     commands.filter((c) => /sync\s+push/.test(c) && !/--what-if|\s-w\b/.test(c)),
     'the skill hands the push command to the user; the agent must not push definitions itself'
   ).toEqual([]);
-  const mcpMutations = (o11y.toolCalls ?? []).filter((t: { name?: string }) =>
-    /mutateComponent|mutateContentTypeOrBlock|mutatePattern|mutateAggregate/.test(t.name ?? '')
+  const mcpMutations = toolCallNames().filter((n) =>
+    /mutateComponent|mutateContentTypeOrBlock|mutatePattern|mutateAggregate/.test(n)
   );
   expect(
     mcpMutations,
