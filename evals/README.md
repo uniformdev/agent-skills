@@ -217,6 +217,8 @@ the project state.
 | `automations-ai-review` | `uniform-automations` | greenfield, deterministic | AI copy review on a workflow stage: a `*.automation.ts` module, `workflow.transition` binding (not a save event), a CEL filter on workflow/stage **IDs** that stays total, Scout (`defineScoutAutomation` or `ScoutClient`) rather than a third-party model SDK, declared `permissions`, no deploy to the live project |
 | `automations-inbound-sync` | `uniform-automations` | greenfield, deterministic | inbound PIM sync: `incomingWebhook` trigger, a code handler (not Scout) for deterministic work, literal `process.env.UNIFORM_ENV_*` secret reads, `unauthorized` outcome checked before `rawBody` is parsed, `EntryManagementClient` + `permissions`, no secret value in logs |
 | `automations-outbound-sync` | `uniform-automations` | greenfield, deterministic | outbound search-index sync on publish: `entry.published` (not a stage, a save, or an inbound webhook), a code handler (not Scout), a CEL filter on `input.type` using `==` not JS `===`, `fetch` to the downstream URL rather than a vendor SDK, literal `process.env.UNIFORM_ENV_SEARCH_API_KEY`, no deploy to the live project |
+| `nextjs-breadcrumbs` | `uniform-breadcrumbs` | brownfield + LLM judge | adding breadcrumbs to a correct project: the trail read from the project map node tree (`getNodes` + `includeAncestors`) rather than invented by splitting the URL, keyed on the matched route, dynamic ancestor paths expanded with `Route`, non-navigable nodes left unlinked, `<nav aria-label>` / `<ol>` / `aria-current="page"` semantics, `BreadcrumbList` JSON-LD; judge grades ancestor-chain correctness, `:token` hrefs, server-only access and safe degradation |
+| `nextjs-page-router-breadcrumbs` | `uniform-breadcrumbs`, `uniform-nextjs-page-router` | brownfield + LLM judge | the same task and the **same PROMPT.md, byte for byte**, on the Page Router (`canvas-next` + `canvas-react`, `withUniformGetServerSideProps`, `registerUniformComponent`): tests the skill's framework-neutrality claim rather than trusting it, and is the only eval coverage `uniform-nextjs-page-router` has |
 
 Notes on reading particular fixtures:
 
@@ -249,6 +251,136 @@ Notes on reading particular fixtures:
 - **`timeout` is experiment-level, so the generic pair carries the maximum its fixtures need.** The
   navigation fixture is why that is 1800s: at a shorter ceiling both arms get truncated, which by
   the paired-arms rule voids the comparison rather than producing a 0%.
+
+### `nextjs-breadcrumbs`
+
+Brownfield but deliberately bare: the fixture ships only the `page` shell, the resolver and the
+composition route. The `hero` component the other nextjs fixtures carry was removed —
+breadcrumbs use no parameters, slots or `UniformText`, so it taught the agent nothing about this
+task and its `placeholder="Enter title here"` prop collided with the assertion that looks for a
+`type: "placeholder"` node guard.
+
+`.skills-src/` stages **both** `uniform-breadcrumbs` and `uniform-nextjs-app-router`, the same
+pairing `nextjs-navigation-mega-menu` uses and for the same reason: `uniform-breadcrumbs` is
+framework-neutral and defers where the four inputs live, which client is server-only and how the
+SDK caches to the framework skill. Staging it alone would measure the skill with its own
+cross-references pointing at files that are not installed, which is not how the plugin ships it.
+
+Covered by the generic pair — `npm run eval` runs it alongside the other Claude fixtures. It is
+listed explicitly in `experiments/lib/generic-evals.ts`; the `nextjs` prefix is naming
+convention, not wiring (the `startsWith('nextjs')` glob it used to imply was replaced by that
+allowlist, so a fixture absent from it silently never runs).
+
+The prompt describes the *site* — pages editors organise and move, levels that are not pages,
+URLs that vary — and names no API, package, component type or technique. Nothing in it points at
+the project map, so unlike `nextjs-app-router-add-component` this brownfield task can show lift
+rather than only guarding against drift — which it does: 0% → 100%, below.
+
+Assertions are name-independent (the prompt dictates no component type name) and strip comments
+before matching, so an agent cannot pass by quoting the requirement in a `// TODO`. Validated
+offline before the first paid run, against three trees: a reference implementation built from
+the skill's own code blocks (15/15), a naive URL-splitting implementation (2/15), and that same
+implementation with every requirement quoted in comments (2/15 — comment stripping holds).
+
+The single judge criterion covers what regex cannot see: whether the crumbs really are the
+ancestor chain in order, whether an unexpanded `:token` can reach an href, whether the last
+crumb is a non-link, whether the project map is only read on the server, and whether an
+unbuildable trail renders nothing instead of throwing.
+
+#### 2026-08-27 results (`runs: 1` each)
+
+| Arm | Pass | Wall-clock | Billable tokens |
+|---|---|---|---|
+| baseline | 0% | 508s | 198.6k |
+| with-skill | **100%** | 410s | 289.8k |
+
+Both on `vercel-ai-gateway/claude-code` · `anthropic/claude-sonnet-4.6`. The skill arm has now
+passed 9/9 on **four separate runs**, the last after the structured-data and cache-key fixes, so
+these numbers and the Page Router ones below describe the skill as it merges. The baseline has
+failed on all four of its runs.
+
+The two arms come from different runs — the baseline was not re-measured, because `baseline()`
+strips the skill and a skill edit cannot change its behaviour. Compare pass rates across the
+arms; do not read the wall-clock or token gap between them as a measured difference.
+
+**Still `runs: 1` per experiment.** Read it as evidence the skill closes the gap on this
+fixture, not as a stable pass rate.
+
+No consistent cost difference between the arms: across runs the skill arm spanned 263–410s and
+173.3–289.8k tokens against the baseline's 337–526s and 187.2–252.2k.
+
+The baseline's failures are the gap the skill exists to close. Which ones fire varies between
+runs — two on the latest, four on earlier ones — but it has never passed, and two recur every
+time:
+
+- `a new component type is registered without disturbing the existing one` — **every run**. It
+  builds the component but never extends `resolveComponent`, so no author can place it
+- `dynamic ancestor paths are expanded with the SDK path-template engine` — **every run**
+- `the current node is identified by the route that matched, not the resolved URL`
+- `the trail is correct, safe, and built on the server` (judge) — no `try/catch` around
+  `getNodes`, and unresolved `:token` paths rendered as live links
+
+Worth noting what the baseline got *right*, because it narrows what the skill is actually worth
+here: it found `ProjectMapClient.getNodes` with `includeAncestors` unaided, every time. The cold
+agent does not split the URL — it reaches the right API and then gets the matched route, the
+path expansion and the failure modes wrong.
+
+
+### `nextjs-page-router-breadcrumbs`
+
+The Page Router twin of `nextjs-breadcrumbs`, and the reason it exists: `uniform-breadcrumbs`
+claims framework-neutrality in its own body and makes concrete Page Router claims. This fixture
+tests the claim rather than trusting it, and gives `uniform-nextjs-page-router` its first eval
+coverage.
+
+**`PROMPT.md` is copied byte for byte from the App Router fixture.** It ported without a word
+changing, which is the evidence that prompt was genuinely free of API and framework detail. The
+starter tree is the Page Router equivalent — `pages/[[...path]].tsx` on
+`withUniformGetServerSideProps`, `pages/_app.tsx`, a `page` component registered with
+`registerUniformComponent`, and the barrel file that imports it — and `.skills-src/` stages
+`uniform-breadcrumbs` alongside `uniform-nextjs-page-router`.
+
+Two assertions needed more than a port. The App Router fixture greps the whole project for
+`matchedRoute` and `getServerSideProps`; here **both strings already appear in the fixture's own
+starter route**, so those checks would pass before the agent wrote a line. They are scoped to
+files the agent actually touched (o11y `filesModified`, whole-project fallback when no
+transcript exists), and paired with negative assertions on `asPath` / `resolvedUrl` — the two
+Page Router routes to the request URL. The baseline reached for `resolvedUrl` on its first run,
+so that check earns its place.
+
+Two extra assertions cover Page-Router-only failure modes: a registered component whose module
+nothing imports is never registered (registration is an import side effect), and reading the
+project map from a `useEffect` puts `UNIFORM_API_KEY` in the browser.
+
+Validated offline before the first paid run against three trees: the bare fixture (6 of 11
+failed), a reference implementation built from the skill's own code (11/11), and a naive
+`asPath`-splitting implementation (7 of 11 failed).
+
+Building that reference is also what surfaced the gap the skill had: a component registered with
+`registerUniformComponent` never receives page props, so crumbs computed in `getServerSideProps`
+need a context provider — or the page renders them outside the composition. That is now in
+`references/building-the-trail.md`, found by building rather than by a failed run.
+
+#### 2026-08-27 results (`runs: 1` each)
+
+| Arm | Pass | Wall-clock | Billable tokens |
+|---|---|---|---|
+| baseline | 0% | 399s | 198.4k |
+| with-skill | **100%** | 394s | 286.4k |
+
+`vercel-ai-gateway/claude-code` · `anthropic/claude-sonnet-4.6`. The skill arm passed 11/11 on
+its first attempt with no iteration on the skill, and on both re-measures since — after the
+Page Router delivery section, and after the structured-data and cache-key fixes (the numbers
+above). As with the App Router fixture, the arms come from different runs: only the skill arm
+was re-measured.
+
+**The two baselines fail the same way.** Both SDKs, every run: the component is never
+registered, and dynamic paths are never expanded with `Route`. Beyond those two the sets differ
+per run — this Page Router baseline also dropped `BreadcrumbList` and the judge, where the App
+Router baseline on the same day dropped only the two. That the *recurring* pair is identical
+across SDKs is the evidence that the gap belongs to the task rather than to one framework.
+
+**n=1 per arm per run**, three passing runs for the skill arm, two failing for the baseline.
 
 ## Running in CI
 
