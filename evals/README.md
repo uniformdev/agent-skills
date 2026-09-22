@@ -217,8 +217,8 @@ the project state.
 | `automations-ai-review` | `uniform-automations` | greenfield, deterministic | AI copy review on a workflow stage: a `*.automation.ts` module, `workflow.transition` binding (not a save event), a CEL filter on workflow/stage **IDs** that stays total, Scout (`defineScoutAutomation` or `ScoutClient`) rather than a third-party model SDK, declared `permissions`, no deploy to the live project |
 | `automations-inbound-sync` | `uniform-automations` | greenfield, deterministic | inbound PIM sync: `incomingWebhook` trigger, a code handler (not Scout) for deterministic work, literal `process.env.UNIFORM_ENV_*` secret reads, `unauthorized` outcome checked before `rawBody` is parsed, `EntryManagementClient` + `permissions`, no secret value in logs |
 | `automations-outbound-sync` | `uniform-automations` | greenfield, deterministic | outbound search-index sync on publish: `entry.published` (not a stage, a save, or an inbound webhook), a code handler (not Scout), a CEL filter on `input.type` using `==` not JS `===`, `fetch` to the downstream URL rather than a vendor SDK, literal `process.env.UNIFORM_ENV_SEARCH_API_KEY`, no deploy to the live project |
-| `nextjs-breadcrumbs` | `uniform-breadcrumbs` | brownfield + LLM judge | adding breadcrumbs to a correct project: the trail read from the project map node tree (`getNodes` + `includeAncestors`) rather than invented by splitting the URL, keyed on the matched route, dynamic ancestor paths expanded with `Route`, non-navigable nodes left unlinked, `<nav aria-label>` / `<ol>` / `aria-current="page"` semantics, `BreadcrumbList` JSON-LD; judge grades ancestor-chain correctness, `:token` hrefs, server-only access and safe degradation |
-| `nextjs-page-router-breadcrumbs` | `uniform-breadcrumbs`, `uniform-nextjs-page-router` | brownfield + LLM judge | the same task and the **same PROMPT.md, byte for byte**, on the Page Router (`canvas-next` + `canvas-react`, `withUniformGetServerSideProps`, `registerUniformComponent`): tests the skill's framework-neutrality claim rather than trusting it, and is the only eval coverage `uniform-nextjs-page-router` has |
+| `nextjs-breadcrumbs` | `uniform-breadcrumbs` | brownfield + LLM judge | adding breadcrumbs to a correct project: the trail read from the project map node tree (`getNodes` + `includeAncestors`) rather than invented by splitting the URL, keyed on the matched route, dynamic ancestor paths expanded with `Route`, **crumb titles resolved through `RouteClient.get` with a `select` projection** rather than from project map metadata, `releaseId` forwarded, non-navigable nodes left unlinked, `<nav aria-label>` / `<ol>` / `aria-current="page"` semantics, `BreadcrumbList` JSON-LD; judge grades ancestor-chain correctness, `:token` hrefs, server-only access, safe degradation and the title source |
+| `nextjs-page-router-breadcrumbs` | `uniform-breadcrumbs`, `uniform-nextjs-page-router` | brownfield + LLM judge | the same task and the **same PROMPT.md, byte for byte**, on the Page Router (`canvas-next` + `canvas-react`, `withUniformGetServerSideProps`, `registerUniformComponent`): tests the skill's framework-neutrality claim rather than trusting it, is the only eval coverage `uniform-nextjs-page-router` has, and is where the judge catches Uniform clients constructed at page module scope |
 
 Notes on reading particular fixtures:
 
@@ -262,7 +262,7 @@ task and its `placeholder="Enter title here"` prop collided with the assertion t
 
 `.skills-src/` stages **both** `uniform-breadcrumbs` and `uniform-nextjs-app-router`, the same
 pairing `nextjs-navigation-mega-menu` uses and for the same reason: `uniform-breadcrumbs` is
-framework-neutral and defers where the four inputs live, which client is server-only and how the
+framework-neutral and defers where the five inputs live, which client is server-only and how the
 SDK caches to the framework skill. Staging it alone would measure the skill with its own
 cross-references pointing at files that are not installed, which is not how the plugin ships it.
 
@@ -277,54 +277,102 @@ the project map, so unlike `nextjs-app-router-add-component` this brownfield tas
 rather than only guarding against drift — which it does: 0% → 100%, below.
 
 Assertions are name-independent (the prompt dictates no component type name) and strip comments
-before matching, so an agent cannot pass by quoting the requirement in a `// TODO`. Validated
-offline before the first paid run, against three trees: a reference implementation built from
-the skill's own code blocks (15/15), a naive URL-splitting implementation (2/15), and that same
-implementation with every requirement quoted in comments (2/15 — comment stripping holds).
+before matching, so an agent cannot pass by quoting the requirement in a `// TODO`. 15 tests: 14
+deterministic plus one judge criterion.
+
+The fixture carries a synced page component definition at `uniform-data/component/page.yaml`
+whose `titleParameter` is `headline` — deliberately neither `title` nor `pageTitle`. The skill
+tells the agent to read that field off the definition rather than guess it, and a guessed field
+id is accepted by the Route API and returns nothing, so every crumb silently falls back to its
+node name with no error anywhere. Before the definition existed there was nothing in the tree to
+read and any field name passed the projection assertions; the check now reads the value out of
+the fixture and requires it inside the `only: [...]` array, so it stays name-independent.
+
+Validated offline before each paid run, against captured project trees: a reference built from
+the skill's own code blocks passes 13/13 deterministic, while the captured project of the
+previous project-map-titles skill fails exactly the three title-source assertions. (Its fourth
+failure, `extends the existing project`, is an artifact of `copyFiles: 'changed'` — a captured
+tree carries no `package.json`, so that assertion cannot be read offline.)
 
 The single judge criterion covers what regex cannot see: whether the crumbs really are the
 ancestor chain in order, whether an unexpanded `:token` can reach an href, whether the last
-crumb is a non-link, whether the project map is only read on the server, and whether an
-unbuildable trail renders nothing instead of throwing.
+crumb is a non-link, whether the project map is only read on the server, whether an unbuildable
+trail renders nothing instead of throwing, and whether the title really comes from a Route API
+call on the *expanded* path with the current page excluded.
 
-#### 2026-08-27 results (`runs: 1` each)
+#### 2026-09-22 results (`runs: 1` each)
 
-| Arm | Pass | Wall-clock | Billable tokens |
+Three arms, one fixture, same agent/model/judge/timeout — the skill is the only variable. The
+incumbent is the previous project-map-titles version of `uniform-breadcrumbs`, kept installed
+under its own arm for the comparison; the candidate is the Route API rework that shipped.
+
+| Arm | Skill installed | Pass | Wall-clock |
 |---|---|---|---|
-| baseline | 0% | 508s | 198.6k |
-| with-skill | **100%** | 410s | 289.8k |
+| `breadcrumbs-claude-baseline` | none | 0% | 325s |
+| `nextjs-breadcrumbs-claude-incumbent` | project-map titles | 0% | 348s |
+| `nextjs-breadcrumbs-claude-routeapi` | Route API titles (shipped) | **100%** | 378s |
 
-Both on `vercel-ai-gateway/claude-code` · `anthropic/claude-sonnet-4.6`. The skill arm has now
-passed 9/9 on **four separate runs**, the last after the structured-data and cache-key fixes, so
-these numbers and the Page Router ones below describe the skill as it merges. The baseline has
-failed on all four of its runs.
+`vercel-ai-gateway/claude-code` · `anthropic/claude-sonnet-4.6`. All three arms were temporary
+and have been deleted; the fixture is back on the generic `baseline` / `with-skill` pair.
 
-The two arms come from different runs — the baseline was not re-measured, because `baseline()`
-strips the skill and a skill edit cannot change its behaviour. Compare pass rates across the
-arms; do not read the wall-clock or token gap between them as a measured difference.
+The incumbent's four failures are the rework's whole case: the three title-source assertions
+plus the judge. Its judge note names the defect exactly — it titled crumbs from
+`withCompositionData: true` and node names, and never forwarded `releaseId`.
 
-**Still `runs: 1` per experiment.** Read it as evidence the skill closes the gap on this
-fixture, not as a stable pass rate.
+The baseline's failure is not the URL-splitting one you would expect: it finds `getNodes` with
+`includeAncestors` unaided every time. What it misses is registering the component, expanding
+dynamic paths with `Route`, and every part of the title source.
 
-No consistent cost difference between the arms: across runs the skill arm spanned 263–410s and
-173.3–289.8k tokens against the baseline's 337–526s and 187.2–252.2k.
+**Which assertions it misses is not stable across runs**, and only two baseline runs have been
+measured. The first failed seven of fourteen, including `nodes with no page behind them are not
+turned into links` and `titles are not read from project map composition metadata`; the second
+(below) passed both of those and failed six of fifteen. Read the recurring set as the finding —
+registration, `Route` expansion, the title source, `releaseId` — and treat any single assertion
+outside it as one run's behaviour rather than a property of the task.
 
-The baseline's failures are the gap the skill exists to close. Which ones fire varies between
-runs — two on the latest, four on earlier ones — but it has never passed, and two recur every
-time:
+**The candidate failed its own first run, and that failure was a skill defect worth recording.**
+The agent copied the trail module faithfully, including the fact that the sample guarded every
+Route API call with `try/catch` but left `projectMap.getNodes` unguarded — so an API failure
+would throw out of a component an author placed and take the page down. Judge criterion (5)
+caught it; 13 of 13 deterministic assertions passed. The fix moved the guard inside the module
+(`fetchChain`), so a caller cannot forget it, and the two runs after it both pass.
 
-- `a new component type is registered without disturbing the existing one` — **every run**. It
-  builds the component but never extends `resolveComponent`, so no author can place it
-- `dynamic ancestor paths are expanded with the SDK path-template engine` — **every run**
-- `the current node is identified by the route that matched, not the resolved URL`
-- `the trail is correct, safe, and built on the server` (judge) — no `try/catch` around
-  `getNodes`, and unresolved `:token` paths rendered as live links
+**Still `runs: 1` per arm.** Two passing candidate runs, one of them on a skill version that has
+since changed. Read it as "the shipped skill closes a gap the previous one did not", not as a
+stable pass rate.
 
-Worth noting what the baseline got *right*, because it narrows what the skill is actually worth
-here: it found `ProjectMapClient.getNodes` with `includeAncestors` unaided, every time. The cold
-agent does not split the URL — it reaches the right API and then gets the matched route, the
-path expansion and the failure modes wrong.
+#### 2026-09-22, re-measured after the `titleParameter` assertion
 
+The numbers above were measured before `uniform-data/component/page.yaml` and the fourteenth
+deterministic test existed, and the run that produced the 100% set
+`TITLE_PARAMS = ["title", "pageTitle"]` — a guess the fixture's definition now contradicts. The
+arm was re-run on the current fixture, everything else held constant:
+
+| Arm | Skill installed | Pass | Wall-clock |
+|---|---|---|---|
+| `breadcrumbs-titleparam-baseline` | none | 0% (6 of 15 failed) | 361s |
+| `breadcrumbs-titleparam` | Route API titles (shipped) | **100%** (14/14 + judge) | 377s |
+
+The agent wrote `const TITLE_PARAMETER = "headline"` — it read the value out of the definition
+rather than guessing it, which is the whole of what the assertion was added to check.
+
+**The control was re-run too, and it was not optional.** `uniform-data/component/page.yaml` sits
+in the starter tree the control reads as well, so the recorded 0% had been measured against a
+different project than the treatment — which is the comparison this file warns against two
+sections up. It is still 0%, and the fixture does not leak the answer: both baseline agents
+opened `uniform-data` (six and two transcript mentions) and `headline` appears in neither
+produced project, because what they are missing is the Route API projection, not the field
+name.
+
+Offline validation before that paid run is what made it worth spending. Against the captured
+pre-assertion winning tree the new suite scores **13 of 14**, failing only the new assertion; a
+reference implementation assembled from the shipped skill's own code blocks, with the one
+substitution its sample comment demands, passes **14 of 14**. It also caught a broken assertion:
+the first draft required the field id to appear literally inside the projection's `only: [...]`
+array, which the reference implementation fails, because the id reaches the projection through an
+option rather than as a literal at the call site. That draft would have failed the paid run for a
+reason that had nothing to do with the agent. It matches a quoted literal in the trail modules
+instead.
 
 ### `nextjs-page-router-breadcrumbs`
 
@@ -338,7 +386,10 @@ changing, which is the evidence that prompt was genuinely free of API and framew
 starter tree is the Page Router equivalent — `pages/[[...path]].tsx` on
 `withUniformGetServerSideProps`, `pages/_app.tsx`, a `page` component registered with
 `registerUniformComponent`, and the barrel file that imports it — and `.skills-src/` stages
-`uniform-breadcrumbs` alongside `uniform-nextjs-page-router`.
+`uniform-breadcrumbs` alongside `uniform-nextjs-page-router`. It carries the same
+`uniform-data/component/page.yaml` definition as the App Router fixture, and the same assertion
+that the projected title field is the definition's `titleParameter` rather than a guess: 17
+tests, 16 deterministic plus one judge criterion.
 
 Two assertions needed more than a port. The App Router fixture greps the whole project for
 `matchedRoute` and `getServerSideProps`; here **both strings already appear in the fixture's own
@@ -352,35 +403,76 @@ Two extra assertions cover Page-Router-only failure modes: a registered componen
 nothing imports is never registered (registration is an import side effect), and reading the
 project map from a `useEffect` puts `UNIFORM_API_KEY` in the browser.
 
-Validated offline before the first paid run against three trees: the bare fixture (6 of 11
-failed), a reference implementation built from the skill's own code (11/11), and a naive
-`asPath`-splitting implementation (7 of 11 failed).
+Validated offline before each paid run: a reference implementation built from the skill's own
+code blocks passes 15/15 deterministic, and the captured project of the previous
+project-map-titles skill fails the three title-source assertions.
 
 Building that reference is also what surfaced the gap the skill had: a component registered with
 `registerUniformComponent` never receives page props, so crumbs computed in `getServerSideProps`
 need a context provider — or the page renders them outside the composition. That is now in
 `references/building-the-trail.md`, found by building rather than by a failed run.
 
-#### 2026-08-27 results (`runs: 1` each)
+#### 2026-09-22 results (`runs: 1` each)
 
-| Arm | Pass | Wall-clock | Billable tokens |
+| Arm | Skill installed | Pass | Wall-clock |
 |---|---|---|---|
-| baseline | 0% | 399s | 198.4k |
-| with-skill | **100%** | 394s | 286.4k |
+| `breadcrumbs-claude-baseline` | none | 0% | 488s |
+| `nextjs-page-router-breadcrumbs-claude-incumbent` | project-map titles | 0% | 430s |
+| `nextjs-page-router-breadcrumbs-claude-routeapi` | Route API titles (shipped) | **100%** | 397s |
 
-`vercel-ai-gateway/claude-code` · `anthropic/claude-sonnet-4.6`. The skill arm passed 11/11 on
-its first attempt with no iteration on the skill, and on both re-measures since — after the
-Page Router delivery section, and after the structured-data and cache-key fixes (the numbers
-above). As with the App Router fixture, the arms come from different runs: only the skill arm
-was re-measured.
+`vercel-ai-gateway/claude-code` · `anthropic/claude-sonnet-4.6`. All three arms were temporary
+and have been deleted; the fixture is back on the generic `baseline` / `with-skill` pair.
 
-**The two baselines fail the same way.** Both SDKs, every run: the component is never
-registered, and dynamic paths are never expanded with `Route`. Beyond those two the sets differ
-per run — this Page Router baseline also dropped `BreadcrumbList` and the judge, where the App
-Router baseline on the same day dropped only the two. That the *recurring* pair is identical
-across SDKs is the evidence that the gap belongs to the task rather than to one framework.
+The incumbent fails the identical three title-source assertions as on the App Router, which is
+what makes the defect a property of the skill rather than of one framework's wiring.
 
-**n=1 per arm per run**, three passing runs for the skill arm, two failing for the baseline.
+**Both baselines fail the same way**, on both SDKs and on every run measured: the component is
+never registered, and dynamic paths are never expanded with `Route`. That the recurring pair is
+identical across SDKs is the evidence that the gap belongs to the task rather than to one
+framework. The Page Router baseline is the more stable of the two — both measured runs failed
+exactly the same assertions, with only the added `titleParameter` check joining the set.
+
+**This fixture is where the judge earned its cost.** The candidate passed its first run, then
+failed after the App Router failure-policy fix — not from that fix, but because the judge read
+the Page Router sample more carefully than the previous run had: it constructed `RouteClient`
+and `ProjectMapClient` at the top level of `pages/[[...path]].tsx`. A page module in the Page
+Router is a client module, so those constructions — and their `process.env.UNIFORM_API_KEY`
+reads — sit behind Next's `getServerSideProps` transform rather than behind a guarantee, and no
+reviewer can tell from the file whether they were eliminated. Criterion 4 failed; all 15
+deterministic assertions passed, so regex would never have found it.
+
+The fix is in `references/building-the-trail.md`: a lazy `getTrailClients()` in its own module,
+called from inside the handler, so nothing is constructed at import time. The skill also stopped
+recommending the handler's `client` option, because that option is evaluated at module scope and
+therefore costs exactly the exposure being avoided. The winning run reproduces the shape — a
+`lib/breadcrumbs/clients.ts`, and no `new RouteClient` or `UNIFORM_API_KEY` anywhere in the page
+file.
+
+That is two separate skill defects this one rework surfaced, both found by the judge and neither
+visible to a deterministic assertion. Worth remembering the next time a judge criterion looks
+expensive.
+
+**n=1 per arm.** The candidate has two passing runs, one of them on a skill version that has
+since changed; the incumbent and both baselines have one failing run each.
+
+#### 2026-09-22, re-measured after the `titleParameter` assertion
+
+Same story as on the App Router: the numbers above predate the component definition and the
+sixteenth deterministic test, and that run passed `titleParameter: ["title", "pageTitle"]` from
+`pages/[[...path]].tsx`. Offline against the captured tree the new suite scores **15 of 16**,
+failing only the new assertion. Re-run on the current fixture:
+
+| Arm | Skill installed | Pass | Wall-clock |
+|---|---|---|---|
+| `breadcrumbs-titleparam-baseline` | none | 0% (6 of 17 failed) | 679s |
+| `breadcrumbs-titleparam` | Route API titles (shipped) | **100%** (16/16 + judge) | 450s |
+
+The agent wrote `const TITLE_PARAMETER = 'headline'` in the route module — same result as on the
+App Router, from the same definition, which is the evidence that reading the title parameter is a
+property of the skill rather than of one framework's wiring. Its baseline failed the same six
+assertions as the App Router's, and the same five as its own first run plus the new one. Both
+fixtures ran under one temporary `breadcrumbs-titleparam` / `breadcrumbs-titleparam-baseline`
+pair, since deleted.
 
 ## Running in CI
 
