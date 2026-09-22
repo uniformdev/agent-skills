@@ -139,6 +139,96 @@ test('nodes with no page behind them are not turned into links', () => {
   ).toBe(true);
 });
 
+// Modules that build the trail — the ones that talk to the project map or are named for the
+// job. Negative assertions are scoped to them so a stray word elsewhere cannot fail a run.
+const breadcrumbModules = () =>
+  sourceFiles()
+    .map(({ f, content }) => ({ f, content: stripComments(content) }))
+    .filter(({ content }) => /getNodes|[Bb]readcrumb/.test(content));
+
+test('crumb titles are resolved through the Route API with a projection', () => {
+  const src = code();
+  expect(
+    src,
+    'each linked ancestor\'s title must come from RouteClient.get on its expanded path — the ' +
+      'Route API is the only read that resolves locale, editions, dynamic inputs and data-bound ' +
+      'parameters; the project map client returns node metadata, not content'
+  ).toMatch(/getRouteClient|RouteClient/);
+  expect(
+    src,
+    'the Route API call must carry a `select` projection so the response is the title ' +
+      'parameter and no slots, not the whole composition tree per crumb'
+  ).toMatch(/select\s*:\s*\{/);
+  expect(
+    src,
+    'the projection must name the title field with `fields: { only: [...] }` — an unprojected ' +
+      'route response is several kilobytes per ancestor'
+  ).toMatch(/only\s*:/);
+});
+
+// The page component definition shipped with the fixture names its own title parameter, and
+// it is deliberately neither `title` nor `pageTitle`: the skill says to read `titleParameter`
+// off the definition rather than guess, and a guessed field id is a silent no-op — the
+// projection returns nothing and every crumb quietly falls back to its node name.
+const titleParameter = (): string => {
+  const definition = read('uniform-data/component/page.yaml');
+  const match = /^titleParameter:\s*(\S+)\s*$/m.exec(definition);
+  if (!match) throw new Error('fixture lost uniform-data/component/page.yaml titleParameter');
+  return match[1];
+};
+
+test('the projected title field is read from the component definition, not guessed', () => {
+  const field = titleParameter();
+  // Matched as a quoted literal anywhere in the trail modules, not inside the `only: [...]`
+  // array: the field id is an input to the trail, so it legitimately reaches the projection
+  // through a constant or an option rather than as a literal at the call site.
+  expect(
+    breadcrumbModules().map(({ content }) => content).join('\n'),
+    `the projected title field must be the page component definition's titleParameter ` +
+      `("${field}", in uniform-data/) — a guessed id is accepted by the API and matches ` +
+      'nothing, so every crumb silently falls back to its node name with no error anywhere'
+  ).toMatch(new RegExp(`['"\`]${field}['"\`]`));
+});
+
+test('titles are not read from project map composition metadata', () => {
+  for (const { f, content } of breadcrumbModules()) {
+    expect(
+      content,
+      `${f}: withCompositionData returns identity and status metadata for the project map UI, ` +
+        'never resolved content — no parameters, no dynamic input resolution, no data resources. ' +
+        'A crumb titled from compositionData.name is the composition\'s authoring name, ' +
+        'identical for every value of a dynamic segment'
+    ).not.toMatch(/withCompositionData|compositionData/);
+  }
+});
+
+test('ancestor compositions are not fetched whole', () => {
+  for (const { f, content } of breadcrumbModules()) {
+    expect(
+      content,
+      `${f}: getCompositionById takes no dynamic inputs and no release, so a title bound to a ` +
+        'dynamic input comes back as its raw ${...} expression, and the payload is the whole ' +
+        'tree. Use RouteClient.get on the expanded path with a projection instead'
+    ).not.toMatch(/getCompositionById/);
+  }
+});
+
+test('release context is forwarded to the title lookup', () => {
+  expect(
+    breadcrumbModules().map(({ content }) => content).join('\n'),
+    'pass releaseId through to RouteClient.get — without it an editor previewing a release ' +
+      'sees base titles in the trail while the page itself shows the release'
+  ).toMatch(/releaseId/);
+});
+
+test('the deprecated route method is not used', () => {
+  expect(
+    code(),
+    'RouteClient.getRoute is deprecated in favour of RouteClient.get — same signature and the ' +
+      'same `select` projection, renamed in @uniformdev/canvas 20.74.7'
+  ).not.toMatch(/\.getRoute\s*\(/);
+});
+
 test('markup uses breadcrumb landmark and ordered-list semantics', () => {
   const src = code();
   expect(src, 'the trail must be wrapped in <nav aria-label="..."> so the landmark is distinguishable').toMatch(
@@ -200,9 +290,14 @@ test('the trail is correct, safe, and built on the server', async () => {
       '(3) the last crumb represents the current page and is not a link; ' +
       '(4) the project map is only ever read on the server — no "use client" on any module ' +
       'that constructs a Uniform client or reads UNIFORM_API_KEY, and no client-side fetch of ' +
-      'project map nodes; and ' +
+      'project map nodes; ' +
       '(5) a trail that cannot be built — no project map context, an API failure, or a single ' +
       'crumb because the page is at or just below the root — results in nothing being ' +
-      'rendered, rather than a thrown error or a placeholder message in production markup.'
+      'rendered, rather than a thrown error or a placeholder message in production markup; and ' +
+      '(6) the title of each linked ancestor is read from a Route API call (RouteClient.get) ' +
+      'made with that ancestor\'s expanded, concrete path and a `select` projection limited to ' +
+      'the title parameter, with the project map node name used only as a fallback — not from ' +
+      'project map compositionData, not from getCompositionById, and not fetched at all for the ' +
+      'current page, whose title is already being rendered.'
   );
 });

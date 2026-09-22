@@ -9,6 +9,8 @@ worth handling before the first review.
 - [Root and near-root pages](#root-and-near-root-pages)
 - [Placeholder ancestors](#placeholder-ancestors)
 - [Unpublished ancestors](#unpublished-ancestors)
+- [Redirected ancestors](#redirected-ancestors)
+- [Title lookups that fail](#title-lookups-that-fail)
 - [Missing ancestors](#missing-ancestors)
 - [More than one project map](#more-than-one-project-map)
 - [Nodes with allowed query strings](#nodes-with-allowed-query-strings)
@@ -77,13 +79,24 @@ Project map nodes have **no publish step** — a node exists the moment an autho
 composition behind it does have one. So a node can be in the trail while the page it points at
 has never gone live, and linking it ships a 404.
 
-Two defences, both cheap:
+The Route API is the authority here, and the trail module already asks it. With `state:
+CANVAS_PUBLISHED_STATE`, a route whose composition has no published version resolves to
+`type: 'notFound'`, and `resolvePage` returns `undefined` — the crumb keeps its level and its
+node name and loses its link. Pass `state` through from the page so preview shows draft
+ancestors linked and production does not.
 
-- Pass `state` through from the page (`CANVAS_PUBLISHED_STATE` in production). It selects which
-  composition state the node's `compositionData` is read from.
-- Guard on the node before linking: `node.type === 'composition' && node.compositionId`. When you
-  request published state and want to be stricter, also require `node.compositionData` — request
-  it with `withCompositionData: true`.
+Do not reach for `withCompositionData` to answer this question. It reports whether a composition
+*exists* at a state, not whether the route resolves — it says nothing about redirects, and
+although it names the editions on a node it cannot tell you which one a request would be served.
+The Route API result carries both.
+
+## Redirected ancestors
+
+A redirect configured on an ancestor's path makes `RouteClient.get` return `type: 'redirect'`
+with `redirect.targetUrl`. The module treats it like `notFound` — level kept, link dropped —
+because the target is an arbitrary URL that may sit outside the trail or outside the site.
+Linking to `redirect.targetUrl` is a reasonable project decision when the target is internal;
+make it deliberately, not by accident.
 
 ## Missing ancestors
 
@@ -130,21 +143,35 @@ request produces a link to the bare path. That is usually right — the ancestor
 applies — but check it against the node's configured default (`qs.value`) if the page depends on
 one.
 
+## Title lookups that fail
+
+Two failures look alike and must be handled differently:
+
+| Route API result | Meaning | Crumb |
+|---|---|---|
+| `type: 'notFound'` / `type: 'redirect'` | There is no page to link to at this state | Node name, **no link** |
+| `type: 'composition'` with no usable value for the title parameter | The page exists; the parameter is empty, or you projected the wrong field id | Node name, **link kept** |
+| Thrown error (network, 5xx) | Unknown | Node name, link kept, error logged |
+
+The middle row is the one to look at twice. A `select` projection with a field id that does not
+exist on the component is a silent no-op: the field is simply absent from
+`composition.parameters`, every crumb falls back to its node name, and nothing anywhere reports a
+problem. If every title in the trail is a node name, check the id against the component
+definition's `titleParameter` before suspecting the API.
+
 ## Failure policy
 
 Breadcrumbs are secondary navigation. An API error while fetching the trail must not take the
-page down:
+page down — and in a component an author placed, an unhandled rejection does exactly that.
 
-```ts
-try {
-  crumbs = await getBreadcrumbTrail({ ... });
-} catch (error) {
-  console.error('Breadcrumb trail failed', error);
-  crumbs = [];
-}
-```
+The trail module guards both of its requests: `fetchChain` catches a failed tree request and
+returns an empty trail, `resolvePage` catches a failed title request and returns no title. The
+component then renders nothing, or renders node names. Keep the guards where they are — inside
+the module, not in every caller — so a component that calls `getBreadcrumbTrail` without a
+`try/catch` is still safe. Anything you add to the module that awaits a network call gets the
+same treatment.
 
-Log it — a silently empty trail on every page is the failure mode that survives to production,
+Log both. A silently empty trail on every page is the failure mode that survives to production,
 because nothing on the page looks broken.
 
 ## What to check before shipping
@@ -155,6 +182,13 @@ because nothing on the page looks broken.
 - The root page and a one-level-deep page: nothing renders.
 - A pattern in the playground: nothing renders, no error in the server log.
 - If the project is localized: switch locale and confirm both the titles and the hrefs change.
+- A page whose title parameter is bound to a dynamic input (`${category}`): the crumb shows the
+  resolved value, not the expression.
+- Preview a release that retitles an ancestor: the crumb shows the release title; production
+  does not. Identical output means `releaseId` is not reaching the Route API call.
+- An ancestor with a draft-only composition: linked in preview, unlinked in production.
+- The network tab for one page: one project map request, one small route request per linked
+  ancestor, none for the current page, none with `withCompositionData`.
 - The rendered JSON-LD parses, its `name` values match what is on screen, and every entry but
   the last has an `item`. Run a page whose trail crosses a placeholder ancestor through the Rich
   Results Test — that is the case that produces an invalid list rather than a wrong-looking one.

@@ -8,10 +8,10 @@
     "start": "next start"
   },
   "dependencies": {
-    "@uniformdev/canvas": "^20.58.0",
-    "@uniformdev/canvas-next": "^20.58.0",
-    "@uniformdev/canvas-react": "^20.58.0",
-    "@uniformdev/project-map": "^20.58.0",
+    "@uniformdev/canvas": "^20.74.7",
+    "@uniformdev/canvas-next": "^20.74.7",
+    "@uniformdev/canvas-react": "^20.74.7",
+    "@uniformdev/project-map": "^20.74.7",
     "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

@@ -192,13 +192,13 @@ Rules that make the difference between valid and ignored markup:
 | `item` must be an absolute URL | Relative hrefs are dropped; `new URL(href, SITE_URL)` handles it |
 | Omit `item` on the final entry (or point it at the canonical URL of the current page) | Self-referencing a dynamic URL with query strings splits it from the canonical |
 | Do not mark up crumbs the user cannot see | Adding levels that are not on screen is spam under Google's structured-data policy |
+| Emit one `BreadcrumbList` per trail | Two trails on a page means two separate `BreadcrumbList` objects, not one merged list |
 
 **On the visible trail and the structured data diverging.** The rule that matters is
 directional: never mark up more than is visible. Fewer is tolerated, and here it is forced —
 a grouping level has no URL, so it cannot be a non-final `ListItem`, and the alternatives are
 an invalid list or a fabricated href. Keep the level in the rendered `<ol>`, where it is real
 hierarchy the reader should see, and drop it from the JSON-LD.
-| Emit one `BreadcrumbList` per trail | Two trails on a page means two separate `BreadcrumbList` objects, not one merged list |
 
 `dangerouslySetInnerHTML` is the correct way to emit JSON-LD in React — a `{JSON.stringify(...)}`
 child gets HTML-escaped and the block silently stops parsing. Serialize values you do not

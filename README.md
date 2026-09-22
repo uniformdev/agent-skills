@@ -106,7 +106,7 @@ host.
 | --- | --- |
 | `uniform-assets` | Working with Uniform image/media assets end to end — defining an `asset` parameter, rendering an image `src` with `imageFrom` (the graceful, future-proof default), reading other… |
 | `uniform-automations` | Uniform Automations (`defineAutomation`, `defineScoutAutomation`, `ScoutClient`, `*.automation.ts`). |
-| `uniform-breadcrumbs` | Building a breadcrumb trail in a Uniform frontend from the project map node hierarchy — resolving the current node, walking its ancestors, titling each crumb, expanding dynamic… |
+| `uniform-breadcrumbs` | Building a breadcrumb trail in a Uniform frontend from the project map node hierarchy — resolving the current node, walking its ancestors with the project map client, titling each… |
 | `uniform-content-modeling` | Best practices for content modeling in Uniform — designing content types with well-chosen fields, validations, and naming, deciding what belongs in structured content vs the… |
 | `uniform-enrichment-recommendations` | Add personalized, relevance-ranked content recommendations to a Uniform + React/Next.js project by boosting Content API results with Uniform Context enrichment scores. |
 | `uniform-experience-modeling` | Best practices for experience modeling in Uniform — designing component definitions with well-chosen parameters, slots, editors, and naming, deciding between slots and parameters… |

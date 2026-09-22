@@ -60,7 +60,7 @@ Select **Next.js**, then the **Component Starter Kit** (full-featured) or **Hell
 | Routing / Data | `findRouteMatch`, `CustomRoute`, `DefaultDataClient`, `EnhanceRouteOptions` | `@uniformdev/next-app-router` |
 | Cache | `resolveRouteFromCode` (wrapped in `'use cache'`) | `@uniformdev/next-app-router/cache` |
 | Compat | `createAdapterResolveComponentFunction`, `ResolveComponentResultWithType`, `UniformText`, `UniformSlot` | `@uniformdev/next-app-router/compat` |
-| Clients | `getCompositionDeliveryClient`, `getRouteClient`, `getManifest`, `getManifestClient`, `getProjectMapClient`, `getCanvasClient` (`@deprecated` in favour of `getCompositionDeliveryClient`; both still ship) | `@uniformdev/next-app-router` |
+| Clients | `getCanvasClient`, `getRouteClient`, `getManifest`, `getManifestClient`, `getProjectMapClient` | `@uniformdev/next-app-router` |
 | Components | `UniformSlot`, `UniformText`, `UniformRichText`, `getUniformSlot` | `@uniformdev/next-app-router/component` |
 | Types | `ComponentProps`, `ComponentParameter`, `ComponentContext` | `@uniformdev/next-app-router/component` |
 | Hooks | `useUniformContext`, `useQuirks`, `useScores` | `@uniformdev/next-app-router/component` |
