@@ -25,4 +25,5 @@ export const GENERIC_EVALS = [
   'nextjs-app-router-add-component',
   'nextjs-app-router-setup',
   'nextjs-navigation-mega-menu',
+  'search-add-faceted-search',
 ];
