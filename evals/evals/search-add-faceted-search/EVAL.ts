@@ -140,11 +140,9 @@ test('the existing integration is not damaged', () => {
 
 test('the public env vars the client reads are declared', () => {
   const env = ['.env', '.env.local', '.env.example'].filter(existsSync).map(read).join('\n');
-  for (const key of [
-    'NEXT_PUBLIC_UNIFORM_PROJECT_ID',
-    'NEXT_PUBLIC_UNIFORM_SEARCH_API_URL',
-    'NEXT_PUBLIC_UNIFORM_SEARCH_API_KEY',
-  ]) {
+  // Two variables, not three: since the search service mints project-scoped keys, the key
+  // identifies the project and NEXT_PUBLIC_UNIFORM_PROJECT_ID is no longer part of the contract.
+  for (const key of ['NEXT_PUBLIC_UNIFORM_SEARCH_API_URL', 'NEXT_PUBLIC_UNIFORM_SEARCH_API_KEY']) {
     expect(env, `${key} must be declared — the client reads it in the browser, and NEXT_PUBLIC_* values are inlined at build time`).toMatch(
       new RegExp(`^${key}=`, 'm')
     );
@@ -169,6 +167,15 @@ test('the public env vars the client reads are declared', () => {
       'existing credentials must not be overwritten with invented values — UNIFORM_API_KEY must be exactly what setup left in .env'
     ).toBe(before);
   }
+});
+
+test('the project-map client sends the search key', () => {
+  const client = walk().find((f) => /(^|\/)lib\/search\/projectMapClient\.ts$/.test(f));
+  expect(client, 'the scaffold ships lib/search/projectMapClient.ts (node-id → path map for composition hits)').toBeDefined();
+  expect(
+    read(client!),
+    '/api/project-map fails closed without x-api-key; the create-uniform-search 0.0.6 scaffold calls it bare, so every composition hit silently loses its link until the header is added (install.md → Patch the project-map client)'
+  ).toMatch(/x-api-key/);
 });
 
 test('the mono-* theme tokens are wired into the build, not just written to disk', () => {

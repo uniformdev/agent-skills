@@ -62,24 +62,30 @@ push. Details per step: [references/install.md](references/install.md),
    do not write it by hand.
 5. **Import the theme tokens** — `styles/search-theme.css` — from the global stylesheet
    (Tailwind v4), or merge its palette into `theme.extend.colors.mono` (v3).
-6. **Environment variables.** Add the three public variables the client reads
-   (`NEXT_PUBLIC_UNIFORM_PROJECT_ID`, `NEXT_PUBLIC_UNIFORM_SEARCH_API_URL`,
-   `NEXT_PUBLIC_UNIFORM_SEARCH_API_KEY`) and, for localized projects only,
-   `NEXT_PUBLIC_UNIFORM_DEFAULT_LOCALE`. Leave unknown values blank; never overwrite a
-   populated value; never echo secrets.
-7. **Register the search types in the existing resolver** without rewriting it. The scaffolded
+6. **Environment variables.** Add the two public variables the client reads
+   (`NEXT_PUBLIC_UNIFORM_SEARCH_API_URL`, `NEXT_PUBLIC_UNIFORM_SEARCH_API_KEY`) and, for
+   localized projects only, `NEXT_PUBLIC_UNIFORM_DEFAULT_LOCALE`. The key is a project-scoped
+   `ufs.…` key the user generates from **Connect** in the Uniform Search dashboard; it identifies
+   the project, so no project id is part of the contract (see the env section of install.md for
+   what the 0.0.6 scaffold still expects). Leave unknown values blank; never overwrite a populated
+   value; never echo secrets.
+7. **Patch the scaffolded project-map client.** `create-uniform-search` 0.0.6 writes a
+   `lib/search/projectMapClient.ts` that calls `/api/project-map` **without** the `x-api-key`
+   header. That endpoint fails closed, so composition hits silently get no URLs. Add the header —
+   one line, recipe in [references/install.md](references/install.md#patch-the-project-map-client).
+8. **Register the search types in the existing resolver** without rewriting it. The scaffolded
    components use the compat (flattened-props) shape and register through
    `createAdapterResolveComponentFunction`; a plain `resolveComponent` delegates to that adapter
    for the search types only. See the gating rule below.
-8. **Allow `searchEngine` in the page's content slot** (and `searchAutocomplete` wherever the
+9. **Allow `searchEngine` in the page's content slot** (and `searchAutocomplete` wherever the
    header lives). Slots with an explicit `allowedComponents` list will not offer the new types
    otherwise. Change the project's own `page` definition the way the project normally does:
    Uniform MCP `mutateComponent` when it is connected; otherwise tell the user which slots to
    open in the Uniform UI and move on — never block the rest of the work on this step.
-9. **Check the definitions package, then hand the push to the user.** Confirm the locale the CLI
+10. **Check the definitions package, then hand the push to the user.** Confirm the locale the CLI
    wrote, strip the Design Extensions parameters if that integration is not installed (recipe
    in definitions.md), and give the user the push command. **Do not run the push.**
-10. **Verify** with `npx tsc --noEmit` (and `next build` if the project builds without live
+11. **Verify** with `npx tsc --noEmit` (and `next build` if the project builds without live
     credentials). Then tell the user what to do in Uniform: push, add a **Search Engine** to a
     page, drop **Search Box** / **Search Results** / **Facet Container** + **Search Facet**s into
     its slots, configure **Query By** and **Facet by field**, preview.
@@ -138,6 +144,15 @@ push. Details per step: [references/install.md](references/install.md),
   The 0.0.6 package's `searchBox` additionally carries six presentation parameters typed by the
   Design Extensions integration (`dex-*`) that the component never reads — strip them unless
   Design Extensions is installed.
+- **The project-map call needs the key, and the scaffold does not send it.** `/api/project-map`
+  returns 401 without a valid `x-api-key` (it fails closed even on deployments where `/api/search`
+  is open); the 0.0.6 `projectMapClient.ts` sends none, logs `project map fetch failed: 401` to
+  the browser console only, and returns an empty map — every composition hit renders without a
+  link. Patch it after scaffolding (install.md).
+- **A managed key pins the project.** Requests carrying a `ufs.…` key are bound to the project
+  the key was minted for: a `projectId` that names another project is a 401, an omitted one is
+  filled in. The scaffold still reads `NEXT_PUBLIC_UNIFORM_PROJECT_ID` — leave it unset, or set it
+  to the key's own project, never to anything else.
 - **`--yes` skips existing files.** Re-running the CLI with `-y` leaves an earlier copy in place;
   without it, existing files are overwritten in non-interactive mode.
 - **Behavior relevancy has two silent preconditions.** Documents indexed before the
@@ -165,6 +180,9 @@ push. Details per step: [references/install.md](references/install.md),
   request is a browser-side `POST` with a public key.
 - **The CLI does not install `@uniformdev/search`, write env vars, or edit the resolver.** Its
   "Next steps" note lists what it left for you.
+- **`@uniformdev/search` 0.0.9 changes nothing at runtime.** Its `dist/` is byte-identical to
+  0.0.8; the release documents that `projectId` is no longer needed by the client. Every
+  behavioural claim about 0.0.8 holds.
 - **Not scaffolded by `create-uniform-search` 0.0.6** (the current release): the
   `searchBoxAutocomplete`, `recommendations`, `relatedContent`, `productCard` and `articleCard`
   definitions and components, `lib/search/retrieval.ts`, `enrichmentCategories.ts`,
@@ -176,6 +194,8 @@ push. Details per step: [references/install.md](references/install.md),
 
 ## Resources
 
+- [Discovery](references/discovery.md) — read what the CLI wrote, what the installed SDK exports, which
+  credential the project holds and whether search is already there, before wiring anything
 - [Install](references/install.md) — prerequisite checks, the CLI invocation and what it writes,
   package install, theme tokens, env vars, resolver wiring for both resolver shapes, slot allowance, verification
 - [Definitions](references/definitions.md) — what the package contains, the dedicated config, locale

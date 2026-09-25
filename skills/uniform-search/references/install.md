@@ -54,7 +54,8 @@ the root, and a `Set search content locale to "<locale>"` line. The scaffolded f
 The CLI does not install it. Detect the package manager from the lockfile and install
 `@uniformdev/search` (peer: React ≥ 18). `getHighlightMatch`, which the scaffolded
 `ui/Highlighted.tsx` imports, exists from `0.0.3`; `trackClick` from `0.0.7`; the ranking
-exports (`resolveEnrichmentBoost`, `SearchParams.mode`) from `0.0.8`. Install the latest.
+exports (`resolveEnrichmentBoost`, `SearchParams.mode`) from `0.0.8`; `0.0.9` is the same code
+with `projectId` documented as optional. Install the latest.
 
 ## Theme tokens
 
@@ -69,22 +70,58 @@ The components use `mono-50 … mono-900` utility classes. The CLI writes the pa
 
 ## Environment variables
 
-The client (`lib/search/searchClient.ts`) reads three **public** variables; one more is optional
-and only for localized projects. The CLI adds none of them:
+The client (`lib/search/searchClient.ts`) reads two **public** variables; one more is optional and
+only for localized projects. The CLI adds none of them:
 
 ```dotenv
-NEXT_PUBLIC_UNIFORM_PROJECT_ID=          # same value as UNIFORM_PROJECT_ID
 NEXT_PUBLIC_UNIFORM_SEARCH_API_URL=      # base URL of the deployed search service, e.g. https://acme.search.uniform.app
-NEXT_PUBLIC_UNIFORM_SEARCH_API_KEY=      # the search service's read key (from the integration settings)
+NEXT_PUBLIC_UNIFORM_SEARCH_API_KEY=      # project-scoped search key, ufs.… — generated from Connect in the Uniform Search dashboard
 NEXT_PUBLIC_UNIFORM_DEFAULT_LOCALE=      # localized projects only, e.g. en-US; leave unset otherwise
 ```
 
 The client posts to `${NEXT_PUBLIC_UNIFORM_SEARCH_API_URL}/api/search` with the key in an
 `x-api-key` header — the base URL, not the `/api/search` path, goes in the variable.
 
+**Where the key comes from.** The user opens the Uniform Search tool in their Uniform project and
+presses **Connect** in the status strip; the drawer shows the search URL and mints a search-only
+key for that project. The full key is shown once. It is safe in client code: it can query the
+index and report result clicks for its own project, nothing else. **Rotate** in the same drawer
+issues a new key and keeps the old one working for 24 hours. Deployments provisioned before the
+drawer existed also accept a deployment-wide `SEARCH_API_KEY` value (legacy, being retired).
+
+**The project id is not part of the contract any more.** A `ufs.…` key identifies its project, and
+the service fills `projectId` in from the key. The 0.0.6 scaffold predates this: `searchClient.ts`
+still passes `process.env.NEXT_PUBLIC_UNIFORM_PROJECT_ID`, and `SearchEngine.tsx` skips the
+project-map fetch when that variable is empty. So with the current CLI either leave
+`NEXT_PUBLIC_UNIFORM_PROJECT_ID` unset and accept that composition hits resolve no URL until the
+next CLI release, or set it to the project the key was minted for — a value naming any other
+project turns every search into a 401. Never set it from a guess.
+
 Check `.env`, `.env.local` and `.env.example`. Add missing keys with an empty value and a comment
 saying where the value comes from. The CLI push the user runs later uses the standard
 `UNIFORM_API_KEY` / `UNIFORM_PROJECT_ID`, which an integrated project already has.
+
+## Patch the project-map client
+
+`/api/project-map` (node-id → path map for composition hits) requires `x-api-key` and fails
+closed; the 0.0.6 scaffold's `lib/search/projectMapClient.ts` calls it bare, gets a 401, logs it
+to the browser console and returns `{}` — every composition hit then renders without a link. Add
+the header after scaffolding (run from the source root):
+
+```bash
+node -e '
+const fs=require("fs");const f="lib/search/projectMapClient.ts";let s=fs.readFileSync(f,"utf8");
+const from="    const res = await fetch(url);";
+const to="    const apiKey = process.env.NEXT_PUBLIC_UNIFORM_SEARCH_API_KEY;\n    const res = await fetch(url, { headers: apiKey ? { \x27x-api-key\x27: apiKey } : {} });";
+if(!s.includes(from)) throw new Error("anchor not found — the CLI version already sends the key?");
+fs.writeFileSync(f,s.replace(from,to));
+'
+grep -n "x-api-key" lib/search/projectMapClient.ts   # → one hit
+```
+
+If the anchor is not found, the scaffold already sends the key (a newer CLI) and nothing is
+needed. This is the one edit to make to scaffolded code; typechecks against
+`@uniformdev/next-app-router` 20.73 and `@uniformdev/search` 0.0.9.
 
 ## Register the components
 
@@ -168,4 +205,6 @@ npx tsc --noEmit
 Then `next build` if the project builds without live Uniform credentials. Typical failures and
 their cause: unresolved `@/components/search/...` → wrong `--src-root` for the alias;
 `Cannot find module '@uniformdev/search'` → runtime package not installed; `mono-*` classes with
-no effect → theme file not imported.
+no effect → theme file not imported; search returns 401 → the key names a different project than
+`NEXT_PUBLIC_UNIFORM_PROJECT_ID`; composition hits have no links and the console shows
+`project map fetch failed: 401` → the project-map patch above was not applied.

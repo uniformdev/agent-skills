@@ -217,7 +217,7 @@ the project state.
 | `automations-ai-review` | `uniform-automations` | greenfield, deterministic | AI copy review on a workflow stage: a `*.automation.ts` module, `workflow.transition` binding (not a save event), a CEL filter on workflow/stage **IDs** that stays total, Scout (`defineScoutAutomation` or `ScoutClient`) rather than a third-party model SDK, declared `permissions`, no deploy to the live project |
 | `automations-inbound-sync` | `uniform-automations` | greenfield, deterministic | inbound PIM sync: `incomingWebhook` trigger, a code handler (not Scout) for deterministic work, literal `process.env.UNIFORM_ENV_*` secret reads, `unauthorized` outcome checked before `rawBody` is parsed, `EntryManagementClient` + `permissions`, no secret value in logs |
 | `automations-outbound-sync` | `uniform-automations` | greenfield, deterministic | outbound search-index sync on publish: `entry.published` (not a stage, a save, or an inbound webhook), a code handler (not Scout), a CEL filter on `input.type` using `==` not JS `===`, `fetch` to the downstream URL rather than a vendor SDK, literal `process.env.UNIFORM_ENV_SEARCH_API_KEY`, no deploy to the live project |
-| `search-add-faceted-search` | `uniform-search` | brownfield, deterministic | adding Uniform Search to a correct App Router project: the components and definitions scaffolded with the `create-uniform-search` CLI (asserted from the transcript) rather than reinvented, `@uniformdev/search` installed, the search types registered through the compat adapter without rewriting existing server components, public env vars declared without clobbering existing credentials, the `mono-*` theme actually imported (not just written to disk), definitions staged as the vendored CLI package with `mode: 'create'` next to its config and not in `uniform-data/`, the package authored in the project's default locale, and the push handed to the user (no `sync push`, no MCP mutations) |
+| `search-add-faceted-search` | `uniform-search` | brownfield, deterministic | adding Uniform Search to a correct App Router project: the components and definitions scaffolded with the `create-uniform-search` CLI (asserted from the transcript) rather than reinvented, `@uniformdev/search` installed, the search types registered through the compat adapter without rewriting existing server components, the two public env vars declared without clobbering existing credentials (the search key identifies the project, so no project id), the scaffolded project-map client patched to send `x-api-key` (the 0.0.6 scaffold calls the fail-closed endpoint bare), the `mono-*` theme actually imported (not just written to disk), definitions staged as the vendored CLI package with `mode: 'create'` next to its config and not in `uniform-data/`, the package authored in the project's default locale, and the push handed to the user (no `sync push`, no MCP mutations) |
 
 Notes on reading particular fixtures:
 
@@ -249,13 +249,17 @@ Notes on reading particular fixtures:
   for the CLI invocation, and the rest target where a with-skill run can still go wrong — the
   resolver shape (the compat adapter must be gated, not chained, and the existing `Hero` not
   rewritten), the package staged next to its `create`-mode config, the locale (the fixture's default
-  is `en-US` so the step is exercised, not trivially satisfied), and the hand-off. Deterministic
-  only. The Uniform side — the push, the integration's parameter types, opening the page slot — is
-  not exercised, because fixtures do not call a live project. First measured pair (local Docker
-  sandbox, Claude Code on Sonnet): the cold agent hand-rolled a search client and its own
-  components, wrote the definitions as `uniform-data/` YAML, and failed 9 of 10 assertions in
-  about three times the wall-clock; the with-skill run passed every project-state assertion,
-  scaffolding with the CLI and remapping the package to `en-US`.
+  is `en-US` so the step is exercised, not trivially satisfied), the project-map header patch (added
+  after `@uniformdev/search` 0.0.9 documented the key-identifies-the-project contract; both earlier
+  pairs predate it and would fail that one assertion), and the hand-off. Deterministic only.
+  The Uniform side — the push, the integration's parameter types, opening the page slot — is
+  not exercised, because fixtures do not call a live project. Two measured pairs so far (local
+  Docker sandbox, Claude Code on Sonnet, transcript assertions unasserted — see Known
+  limitations): baseline 1/10 in 648 s and 2/10 in 1011 s, with-skill 8/8 graded in 201 s and
+  10/10 in 393 s. Both cold runs hand-rolled a fetch client behind a proxy API route, invented
+  their own component set and type ids, and wrote definitions as `uniform-data/` YAML; both
+  skill runs scaffolded with the CLI, gated the resolver, and remapped the package to `en-US`.
+  Run artifacts stay local under the git-ignored `evals/results/`.
 - **Assertions strip comments before matching**, so an agent that quotes a rule back in a comment is
   not credited — or failed — for agreeing with it.
 - **The automations fixtures use the full discovery skip set** (`.claude`, `.agents`, `.cursor`,

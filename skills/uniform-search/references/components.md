@@ -37,7 +37,8 @@ is the fallback. To support the project's own content types, add a module export
 `source`, `type: string[]` and `Renderer`, and push it into `rendererModules`. Hit URLs come
 from `useUrlResolver()`, backed by the engine's `entryUrlMapping` and, for composition hits, a
 node-id → path map fetched from the search service's `/api/project-map` endpoint
-(`lib/search/projectMapClient.ts`).
+(`lib/search/projectMapClient.ts`) — an authenticated call; see the patch in
+[install.md](install.md#patch-the-project-map-client).
 
 Click analytics: `@uniformdev/search ≥ 0.0.7` exposes `trackClick({ docId, locale })` on the
 client for the integration's "top clicked" report. The 0.0.6 scaffold does not call it; the
