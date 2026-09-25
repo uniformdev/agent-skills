@@ -152,8 +152,16 @@ npx uniform context manifest download --output ./lib/uniform/manifest.json
 
 A project that keeps its manifest elsewhere: change the import path in
 `lib/search/enrichmentCategories.ts` instead. A manifest with no `project.pz.enr` yields an
-empty category list, which disables boosting without error. Add a `uniform:manifest` npm script
-so the file is refreshed when enrichments change.
+empty category list, which disables boosting without error — so when the download cannot run
+(no `UNIFORM_API_KEY` / `UNIFORM_PROJECT_ID` in the environment, or placeholder values), write
+the smallest valid manifest and tell the user to replace it with a real download:
+
+```bash
+mkdir -p lib/uniform && [ -f lib/uniform/manifest.json ] || echo '{"project":{}}' > lib/uniform/manifest.json
+```
+
+Add a `uniform:manifest` npm script (`uniform context manifest download --output
+./lib/uniform/manifest.json`) so the file is refreshed when enrichments change.
 
 ### `'use cache'` in `cachedProjectMapPaths.ts`: build fails without `cacheComponents`
 

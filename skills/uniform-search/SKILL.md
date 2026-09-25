@@ -73,7 +73,7 @@ push. Details per step: [references/install.md](references/install.md),
    anything, and fix exactly what it reports — recipes in
    [references/install.md](references/install.md#reconcile-the-scaffold). Known gaps by version:
    CLI ≥ 0.0.7 always → `enrichmentCategories.ts` needs a local Context manifest
-   (`uniform context manifest download`) and `cachedProjectMapPaths.ts` needs `cacheComponents`
+   (`uniform context manifest download`; a `{"project":{}}` stub when there are no credentials) and `cachedProjectMapPaths.ts` needs `cacheComponents`
    (or the uncached-fetch swap); CLI ≥ 0.0.7 with SDK < 0.0.10 → `SearchSorting.tsx` imports a
    predefined-sort API that SDK lacks (upgrade the SDK; strip only if it is pinned); CLI 0.0.6 →
    `projectMapClient.ts` sends no `x-api-key` (add it).

@@ -178,6 +178,36 @@ test('the project-map client sends the search key', () => {
   ).toMatch(/x-api-key/);
 });
 
+test('the scaffold is reconciled so it compiles: the Context manifest import resolves', () => {
+  const cats = walk().find((f) => /(^|\/)lib\/search\/enrichmentCategories\.ts$/.test(f));
+  if (!cats) return; // older CLI: nothing to reconcile
+  const src = read(cats);
+  const m = src.match(/from\s+['"]@\/([^'"]+\.json)['"]/);
+  expect(m, 'enrichmentCategories.ts imports the Context manifest as JSON under the @/ alias').not.toBeNull();
+  const base = cats.split('lib/search/')[0]; // source root ('' or 'src/')
+  expect(
+    existsSync(base + m![1]),
+    `the scaffold imports ${m![1]} but no such file exists — the v2 starter keeps no local manifest, so \`uniform context manifest download --output ./${m![1]}\` (or a stub that disables boosting) is part of installing search; without it the project does not typecheck (install.md → Reconcile the scaffold)`
+  ).toBe(true);
+});
+
+test("the scaffold is reconciled so it builds: 'use cache' is enabled or swapped out", () => {
+  const cached = walk().find((f) => /(^|\/)lib\/search\/cachedProjectMapPaths\.ts$/.test(f));
+  if (!cached) {
+    const stillImported = files().filter(({ content }) => content.includes('cachedProjectMapPaths'));
+    expect(
+      stillImported.map(({ f }) => f),
+      'cachedProjectMapPaths.ts was removed but something still imports it'
+    ).toEqual([]);
+    return;
+  }
+  const nextConfig = walk().find((f) => /^next\.config\.(ts|js|mjs)$/.test(f));
+  expect(
+    nextConfig && /cacheComponents\s*:\s*true/.test(read(nextConfig)),
+    "cachedProjectMapPaths.ts uses 'use cache', which Next refuses to build unless next.config has cacheComponents: true — either enable it (project-wide change) or take the uncached swap in install.md → Reconcile the scaffold"
+  ).toBe(true);
+});
+
 test('the mono-* theme tokens are wired into the build, not just written to disk', () => {
   // search-theme.css is written by create-uniform-search either way, so its own content proves
   // nothing — the skill's step is importing it (or merging its tokens). Scan everything else.
