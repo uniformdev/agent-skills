@@ -74,8 +74,11 @@ const { displayName: _displayName, ...portableIdentity } = identity;
 /**
  * Credential binding differs per agent:
  *   Claude — `${user_config.<key>}`, prompted at enable time, secrets to the keychain
- *   others — `${ENV_VAR}`, expanded from the environment
- * Everything else about the MCP config is identical, so build it once per style.
+ *   Cursor — `${UNIFORM_*}`, substituted from the plugin variables declared in its manifest
+ *            and set under Plugins → Configure (not from the environment or a workspace .env)
+ *   Codex  — `${UNIFORM_*}`, expanded from the environment
+ * Cursor and Codex share placeholder syntax and differ only in where the value comes from,
+ * so everything about the MCP config is identical apart from the style.
  */
 function mcpConfig(style) {
   const { credentials, urlTemplate, headers, serverName, type } = source.mcp;
@@ -99,6 +102,15 @@ function mcpConfig(style) {
   };
 }
 
+/** A credential's description, plus where to fill it in later for this agent. */
+function credentialDescription(credential, agent) {
+  const hint = credential.configureHint ? source.mcp.configureHint?.[agent] : null;
+  if (credential.configureHint && !hint) {
+    throw new Error(`plugin.source.json: mcp.configureHint.${agent} is missing.`);
+  }
+  return hint ? `${credential.description} ${hint}` : credential.description;
+}
+
 /** Claude's enable-time prompt, derived from the same credential definitions. */
 function userConfig() {
   return Object.fromEntries(
@@ -107,13 +119,63 @@ function userConfig() {
       {
         type: 'string',
         title: credential.title,
-        description: credential.description,
+        description: credentialDescription(credential, 'claude'),
         ...(credential.required ? { required: true } : {}),
         ...(credential.sensitive ? { sensitive: true } : {}),
         ...(credential.default ? { default: credential.default } : {}),
       },
     ])
   );
+}
+
+/**
+ * Cursor's `variables`: a JSON Schema object whose property names are the placeholders used
+ * in generated/cursor/mcp.json. Cursor accepts only a subset of JSON Schema keywords, and
+ * `sensitive` is not one of them, so it is dropped here even though Claude honours it.
+ */
+function cursorVariables() {
+  const credentials = Object.values(source.mcp.credentials);
+  const required = credentials.filter((c) => c.required).map((c) => c.env);
+  return {
+    type: 'object',
+    properties: Object.fromEntries(
+      credentials.map((credential) => [
+        credential.env,
+        {
+          type: 'string',
+          title: credential.title,
+          description: credentialDescription(credential, 'cursor'),
+          ...(credential.default ? { default: credential.default } : {}),
+        },
+      ])
+    ),
+    ...(required.length ? { required } : {}),
+  };
+}
+
+/** Cursor's `owner` is `{ name, email? }` — no `url`. */
+function cursorOwner() {
+  const { name, email } = source.marketplace.owner;
+  return { name, ...(email ? { email } : {}) };
+}
+
+/**
+ * Cursor's marketplace schema differs from Claude's: the description lives under
+ * `metadata.description`, and `owner` takes only `name` and `email`.
+ */
+function cursorMarketplace() {
+  return {
+    name: source.marketplace.name,
+    owner: cursorOwner(),
+    metadata: { description: source.marketplace.description },
+    plugins: [
+      {
+        name: source.name,
+        source: './',
+        description: source.description,
+      },
+    ],
+  };
 }
 
 function marketplace() {
@@ -236,16 +298,30 @@ const outputs = [
 
   // Cursor. Skills auto-discover from skills/; `logo` is a bare repo-relative path, which
   // Cursor resolves to a raw.githubusercontent.com URL at the installed commit SHA.
+  //
+  // Only fields Cursor documents are emitted: no `displayName`, and `author` is reduced to
+  // `{ name, email? }`. The MCP placeholders are declared under `variables`, which is what
+  // makes Cursor offer them under Plugins → Configure and substitute them into mcp.json.
   {
     path: '.cursor-plugin/plugin.json',
     content: json({
-      ...identity,
+      name: source.name,
+      description: source.description,
+      author: {
+        name: source.author.name,
+        ...(source.author.email ? { email: source.author.email } : {}),
+      },
+      homepage: source.homepage,
+      repository: source.repository,
+      license: source.license,
+      keywords: source.keywords,
       logo: source.logo,
-      mcp: './generated/cursor/mcp.json',
+      mcpServers: './generated/cursor/mcp.json',
+      variables: cursorVariables(),
     }),
   },
-  { path: '.cursor-plugin/marketplace.json', content: json(marketplace()) },
-  { path: 'generated/cursor/mcp.json', content: json(mcpConfig('env')) },
+  { path: '.cursor-plugin/marketplace.json', content: json(cursorMarketplace()) },
+  { path: 'generated/cursor/mcp.json', content: json(mcpConfig('placeholder')) },
 
   // Codex. Declares skills explicitly per the Codex packaging guide; the marketplace
   // lives at .agents/plugins/ so the repo doubles as a Codex repo-marketplace.
@@ -262,7 +338,7 @@ const outputs = [
     }),
   },
   { path: '.agents/plugins/marketplace.json', content: json(marketplace()) },
-  { path: 'generated/codex/mcp.json', content: json(mcpConfig('env')) },
+  { path: 'generated/codex/mcp.json', content: json(mcpConfig('placeholder')) },
 
   // GitHub Copilot, via the portable Agent Plugins v1 manifest at the repo root. Copilot
   // reads `plugin.json` there and discovers skills from `skills/<name>/SKILL.md`, which is
