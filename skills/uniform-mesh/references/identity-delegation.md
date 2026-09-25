@@ -1,7 +1,6 @@
 # Identity delegation
 
-> ⚠️ **Developer Preview.** The SDK tags this API `@deprecated` to mean *beta — may change with
-> breaking changes*. Requires **HTTPS** (including in local development) and **Identity
+> ⚠️ Requires **HTTPS** (including in local development) and **Identity
 > delegation enabled on the integration** by Uniform.
 
 Lets your integration call Uniform APIs **as the signed-in author**, without shipping a secret

@@ -193,10 +193,6 @@ new work.
 
 ## Optional: data resource selector — `useMeshLocation<'dataResourceSelector'>()`
 
-> ⚠️ The SDK tags this location `@deprecated` to mean **experimental — subject to change
-> without notice**, not "being removed". Treat the
-> shape below as less stable than the other locations.
-
 Once an author has picked a record, they still have to point at a *value inside it* to bind a
 component parameter — by default a raw JSON tree viewer. This location replaces that viewer
 with domain-specific UI: a grid of product images, formatted prices, whatever makes the choice
