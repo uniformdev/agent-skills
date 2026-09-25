@@ -81,8 +81,7 @@ variables. Hand-maintained copies of that drift silently.
 
 ```bash
 npm run build:plugins     # regenerate after editing plugin.source.json
-npm run validate:plugins  # what CI runs; fails if committed output is stale or orphaned,
-                          # or if the Cursor output breaks Cursor's plugin schema
+npm run validate:plugins  # what CI runs; fails if committed output is stale or orphaned
 ```
 
 The generated output is committed so the repository is installable straight from a

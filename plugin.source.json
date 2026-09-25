@@ -30,13 +30,11 @@
   "mcp": {
     "serverName": "uniform",
     "type": "http",
-    "$comment_urlTemplate": "`{host}` carries its own scheme (`https://ai.uniform.global`), matching the UNIFORM_AI_HOST value Uniform hands out in .env files, so the template does not prefix one.",
     "urlTemplate": "{host}/projects/{projectId}/mcp",
     "headers": {
       "x-api-key": "{apiKey}"
     },
     "$comment_credentials": "Each credential is bound differently per agent: Claude prompts for it via userConfig, Cursor declares it as a plugin variable the user sets under Plugins → Configure, and Codex reads it from the environment. The generator emits the right syntax for each.",
-    "$comment_configureHint": "Where to fill a credential in later differs per agent, so it is not baked into `description`. A credential with `configureHint: true` gets the matching sentence below appended to its description in each agent's prompt.",
     "configureHint": {
       "claude": "You can add it later with `/plugin configure`.",
       "cursor": "You can add it later under Plugins → Configure."
