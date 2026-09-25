@@ -18,5 +18,5 @@
     "mesh"
   ],
   "logo": "assets/logo.png",
-  "mcp": "./generated/cursor/mcp.json"
+  "mcpServers": "./generated/cursor/mcp.json"
 }
