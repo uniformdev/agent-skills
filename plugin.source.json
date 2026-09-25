@@ -30,7 +30,8 @@
   "mcp": {
     "serverName": "uniform",
     "type": "http",
-    "urlTemplate": "https://{host}/projects/{projectId}/mcp",
+    "$comment_urlTemplate": "`{host}` carries its own scheme (`https://ai.uniform.global`), matching the UNIFORM_AI_HOST value Uniform hands out in .env files, so the template does not prefix one.",
+    "urlTemplate": "{host}/projects/{projectId}/mcp",
     "headers": {
       "x-api-key": "{apiKey}"
     },
@@ -60,8 +61,8 @@
       "host": {
         "env": "UNIFORM_AI_HOST",
         "title": "Uniform AI host",
-        "description": "Region-specific MCP host. Leave the default unless your team is in another region.",
-        "default": "ai.uniform.global"
+        "description": "Region-specific MCP endpoint, including the `https://` scheme. Leave the default unless your team is in another region.",
+        "default": "https://ai.uniform.global"
       }
     }
   }

@@ -80,6 +80,15 @@ test('every Cursor MCP placeholder has a declared variable', () => {
   }
 });
 
+test('the MCP URL takes its scheme from UNIFORM_AI_HOST, not the template', () => {
+  assert.match(plugin.variables.properties.UNIFORM_AI_HOST.default, /^https:\/\//);
+  for (const path of mcpConfigPaths()) {
+    for (const server of Object.values(readJson(path).mcpServers)) {
+      assert.match(server.url, /^\$\{UNIFORM_AI_HOST\}\//, `${path}: ${server.url}`);
+    }
+  }
+});
+
 test('Cursor output contains no Claude ${user_config.*} placeholders', () => {
   const files = ['.cursor-plugin/plugin.json', '.cursor-plugin/marketplace.json', ...mcpConfigPaths()];
   for (const path of files) {

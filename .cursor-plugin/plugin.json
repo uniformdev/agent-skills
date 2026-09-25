@@ -33,8 +33,8 @@
       "UNIFORM_AI_HOST": {
         "type": "string",
         "title": "Uniform AI host",
-        "description": "Region-specific MCP host. Leave the default unless your team is in another region.",
-        "default": "ai.uniform.global"
+        "description": "Region-specific MCP endpoint, including the `https://` scheme. Leave the default unless your team is in another region.",
+        "default": "https://ai.uniform.global"
       }
     }
   }

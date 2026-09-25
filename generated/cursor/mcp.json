@@ -2,7 +2,7 @@
   "mcpServers": {
     "uniform": {
       "type": "http",
-      "url": "https://${UNIFORM_AI_HOST}/projects/${UNIFORM_PROJECT_ID}/mcp",
+      "url": "${UNIFORM_AI_HOST}/projects/${UNIFORM_PROJECT_ID}/mcp",
       "headers": {
         "x-api-key": "${UNIFORM_API_KEY}"
       }

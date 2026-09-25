@@ -91,7 +91,7 @@ these only when you want the MCP server, and the plugin will not ask for them up
 | --- | --- |
 | `UNIFORM_PROJECT_ID` | Your Uniform project ID |
 | `UNIFORM_API_KEY` | Service Account key or Personal Access Token with the Developer role |
-| `UNIFORM_AI_HOST` | Region-specific MCP host. Defaults to `ai.uniform.global` |
+| `UNIFORM_AI_HOST` | Region-specific MCP endpoint, including `https://`. Defaults to `https://ai.uniform.global` |
 
 The project ID and API key are available in the Uniform dashboard via **Copy as mcp json**.
 The MCP server needs both; with either missing it is listed but cannot connect.
