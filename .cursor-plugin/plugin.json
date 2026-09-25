@@ -1,10 +1,8 @@
 {
   "name": "uniformdev",
-  "displayName": "Uniform",
   "description": "Build with Uniform: framework integrations, experience modeling, Mesh, assets, and the Uniform MCP server.",
   "author": {
-    "name": "Uniform Systems, Inc.",
-    "url": "https://uniform.dev"
+    "name": "Uniform Systems, Inc."
   },
   "homepage": "https://docs.uniform.app",
   "repository": "https://github.com/uniformdev/agent-skills",
@@ -18,5 +16,26 @@
     "mesh"
   ],
   "logo": "assets/logo.png",
-  "mcpServers": "./generated/cursor/mcp.json"
+  "mcpServers": "./generated/cursor/mcp.json",
+  "variables": {
+    "type": "object",
+    "properties": {
+      "UNIFORM_PROJECT_ID": {
+        "type": "string",
+        "title": "Uniform project ID",
+        "description": "Optional — needed only for the Uniform MCP server, not for the skills. Found in your Uniform project settings, or via `Copy as mcp json` in the dashboard. You can add it later under Plugins → Configure."
+      },
+      "UNIFORM_API_KEY": {
+        "type": "string",
+        "title": "Uniform API key",
+        "description": "Optional — needed only for the Uniform MCP server, not for the skills. A Service Account key or Personal Access Token with the Developer role on the project. You can add it later under Plugins → Configure."
+      },
+      "UNIFORM_AI_HOST": {
+        "type": "string",
+        "title": "Uniform AI host",
+        "description": "Region-specific MCP endpoint, including the `https://` scheme. Leave the default unless your team is in another region.",
+        "default": "https://ai.uniform.global"
+      }
+    }
+  }
 }

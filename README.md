@@ -35,15 +35,17 @@ your system keychain. Until then the server is listed but will not connect.
 ### Cursor
 
 Dashboard → **Plugins** → **Add Marketplace** → import `uniformdev/agent-skills`, then
-install the **Uniform** plugin. Enable **Auto Refresh** to pick up new commits. Set
-`UNIFORM_PROJECT_ID` and `UNIFORM_API_KEY` in your environment so the MCP server can
-authenticate.
+install the **Uniform** plugin. Enable **Auto Refresh** to pick up new commits. The skills
+work immediately. To also use the Uniform MCP server, open **Plugins** → **Uniform** →
+**Configure** and set `UNIFORM_PROJECT_ID` and `UNIFORM_API_KEY`. Cursor substitutes these
+plugin values into the MCP config; it does not read them from your shell environment or a
+workspace `.env`.
 
 ### Codex
 
 This repository doubles as a Codex marketplace via `.agents/plugins/marketplace.json`.
 Add it as a marketplace source and install the **uniform** plugin. Credentials come from
-the same two environment variables as Cursor.
+the `UNIFORM_PROJECT_ID` and `UNIFORM_API_KEY` environment variables.
 
 ### GitHub Copilot
 
@@ -89,7 +91,7 @@ these only when you want the MCP server, and the plugin will not ask for them up
 | --- | --- |
 | `UNIFORM_PROJECT_ID` | Your Uniform project ID |
 | `UNIFORM_API_KEY` | Service Account key or Personal Access Token with the Developer role |
-| `UNIFORM_AI_HOST` | Region-specific MCP host. Defaults to `ai.uniform.global` |
+| `UNIFORM_AI_HOST` | Region-specific MCP endpoint, including `https://`. Defaults to `https://ai.uniform.global` |
 
 The project ID and API key are available in the Uniform dashboard via **Copy as mcp json**.
 The MCP server needs both; with either missing it is listed but cannot connect.

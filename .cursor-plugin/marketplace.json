@@ -1,9 +1,10 @@
 {
   "name": "uniformdev",
-  "description": "Official Uniform agent skills and MCP server.",
   "owner": {
-    "name": "Uniform",
-    "url": "https://uniform.dev"
+    "name": "Uniform"
+  },
+  "metadata": {
+    "description": "Official Uniform agent skills and MCP server."
   },
   "plugins": [
     {
