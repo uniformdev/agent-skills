@@ -41,7 +41,8 @@ but say it explicitly); `--no-skill` stops it installing its own `.claude/skills
 copy next to this skill; `--locale` skips the API detection; `--dry-run` previews the file list.
 Without `-y`, existing files are overwritten in non-interactive mode; with `-y` they are skipped.
 
-Verified output with `create-uniform-search@0.0.7` on the v2 starter: 33 files —
+Verified output with `create-uniform-search@0.0.10` (templates identical from 0.0.7) on the v2
+starter: 33 files —
 `components/search/**` (10 components incl. `Recommendations.tsx`, `SearchFilters/`,
 `renderers/`, `ui/`), `lib/search/*.ts` (6: `searchClient`, `projectMapClient`, `typoTolerance`,
 `retrieval`, `enrichmentCategories`, `cachedProjectMapPaths`), `styles/search-theme.css`, plus
@@ -59,8 +60,8 @@ The CLI does not install it. Detect the package manager from the lockfile and in
 `@uniformdev/search` (peer: React ≥ 18). `getHighlightMatch`, which the scaffolded
 `ui/Highlighted.tsx` imports, exists from `0.0.3`; `trackClick` from `0.0.7`; the ranking
 exports (`resolveEnrichmentBoost`, `SearchParams.mode`) from `0.0.8`; `0.0.9` is the same code
-with `projectId` documented as optional; the predefined-sort exports are not published yet.
-Install the latest.
+with `projectId` documented as optional; `0.0.10` adds the predefined-sort exports that CLI
+≥ 0.0.7's `SearchSorting.tsx` imports. Install the latest — an older pin fails typecheck.
 
 ## Theme tokens
 
@@ -108,16 +109,19 @@ saying where the value comes from. The CLI push the user runs later uses the sta
 
 Run `npx tsc --noEmit` right after scaffolding and installing the SDK. What it reports depends
 on which CLI and SDK versions met; every case below was hit on the v2 starter and each fix was
-typechecked and built (`@uniformdev/next-app-router` 20.73, `@uniformdev/search` 0.0.9).
+typechecked and built (`@uniformdev/next-app-router` 20.73, `@uniformdev/search` 0.0.10; the
+strip recipe on 0.0.9).
 
 ### `SearchSorting.tsx`: `'@uniformdev/search'` has no exported member `toPredefinedSortParam`
 
-CLI 0.0.7 ships a Search Sort that registers an editor-pinned *predefined sort*; the SDK exports
-it needs are not in 0.0.9 (four errors: `toPredefinedSortParam`, `PredefinedSortValue`,
-`registerPredefinedSort`, `unregisterPredefinedSort`). First re-check npm — a newer SDK with
-`grep -c toPredefinedSortParam node_modules/@uniformdev/search/dist/index.d.ts` ≥ 1 is the real
-fix. Until then, strip the feature; the component keeps its visitor-facing order-by exactly as
-before, and the `predefinedSort` parameter is simply ignored:
+CLI ≥ 0.0.7 ships a Search Sort that registers an editor-pinned *predefined sort*; the SDK exports
+it needs arrived in `@uniformdev/search` 0.0.10 (four errors on anything older:
+`toPredefinedSortParam`, `PredefinedSortValue`, `registerPredefinedSort`,
+`unregisterPredefinedSort`). **The fix is the SDK upgrade** — `npm install @uniformdev/search@latest`,
+then `grep -c toPredefinedSortParam node_modules/@uniformdev/search/dist/index.d.ts` ≥ 1. Only
+when the project is pinned to an older SDK and cannot move, strip the feature; the component
+keeps its visitor-facing order-by exactly as before, and the `predefinedSort` parameter is
+simply ignored:
 
 ```bash
 node -e '
@@ -134,8 +138,8 @@ fs.writeFileSync(f,s);
 '
 ```
 
-Tell the user the predefined-sort editor on Search Sort has no effect until the SDK ships and
-the strip is reverted (re-run the CLI over the file).
+Tell the user the predefined-sort editor on Search Sort has no effect until the SDK is upgraded
+and the strip is reverted (re-run the CLI over the file).
 
 ### `enrichmentCategories.ts`: cannot find module `@/lib/uniform/manifest.json`
 
@@ -231,7 +235,7 @@ export const searchMappings = {
 };
 ```
 
-CLI 0.0.7 also ships `Recommendations.tsx` with a `recommendations` definition — map it
+CLI ≥ 0.0.7 also ships `Recommendations.tsx` with a `recommendations` definition — map it
 (`recommendations: adapted("recommendations", Recommendations)`) once the reconcile step above is
 done; it is a server component, and the adapter wraps it fine. Map only ids that have **both** a
 definition and a file: the 0.0.7 package defines `searchBoxAutocomplete` without shipping the
@@ -280,7 +284,7 @@ npx tsc --noEmit
 Then `next build` if the project builds without live Uniform credentials. Typical failures and
 their cause: unresolved `@/components/search/...` → wrong `--src-root` for the alias;
 `Cannot find module '@uniformdev/search'` → runtime package not installed; `no exported member
-'toPredefinedSortParam'` → SDK behind the CLI, see Reconcile; `Cannot find module
+'toPredefinedSortParam'` → SDK older than 0.0.10, upgrade it (see Reconcile); `Cannot find module
 '@/lib/uniform/manifest.json'` → download the manifest; `To use "use cache"` at build → take the
 uncached path; `mono-*` classes with no effect → theme file not imported; search returns 401 →
 a `NEXT_PUBLIC_UNIFORM_PROJECT_ID` naming a different project than the key; composition hits

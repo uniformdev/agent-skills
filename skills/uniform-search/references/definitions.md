@@ -5,7 +5,7 @@
 rather than a folder of per-entity files). `uniformsearch.config.js` is the config that points at
 it. Together they push everything the search components need, and nothing the project already has.
 
-## What the package contains (create-uniform-search 0.0.7)
+## What the package contains (create-uniform-search 0.0.7 – 0.0.10, identical)
 
 | Entity | Ids |
 |---|---|
@@ -32,7 +32,7 @@ Component ids, slots and the parameters the React code reads:
 | `facetContainer` | `facets` | — |
 | `searchFacet` | — | `fieldKey` (facetByConfig), `type` (select/multiSelect/range), `title` |
 | `searchPagination` | — | `siblingCount`, `pageSizes` ($block of `pageSize`) |
-| `searchSorting` | — | `orderBy` ($block of `orderBy`), `predefinedSort` (predefinedSortConfig — needs an SDK newer than 0.0.9, see install.md) |
+| `searchSorting` | — | `orderBy` ($block of `orderBy`), `predefinedSort` (predefinedSortConfig — needs `@uniformdev/search` ≥ 0.0.10, see install.md) |
 
 `filterByConfig`, `queryByConfig`, `facetByConfig`, `sortByConfig`, `predefinedSortConfig` and
 `entryUrlMapping` are parameter types registered by the `uniform-search-integration` Mesh
@@ -93,7 +93,7 @@ field, not a search collection name. After the run, confirm the CLI's
 
 ## Strip the Design Extensions parameters
 
-The package's `searchBox` (unchanged through 0.0.7) carries six parameters typed `dex-segmented-control-parameter`,
+The package's `searchBox` (unchanged through 0.0.10) carries six parameters typed `dex-segmented-control-parameter`,
 `dex-token-selector-parameter` and `dex-color-palette-parameter` (in two groups, "Presentation
 Settings" and "Label"). Those types come from the Design Extensions integration, and
 `SearchBox.tsx` reads none of them. Unless Design Extensions is installed in the project, remove

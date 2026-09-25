@@ -8,7 +8,7 @@ before writing code against any of them:
 grep -c "resolveEnrichmentBoost\|SearchMode" node_modules/@uniformdev/search/dist/index.d.ts
 # 0 → SDK older than 0.0.8; retrieval mode and behavior relevancy cannot work
 grep -c "toPredefinedSortParam" node_modules/@uniformdev/search/dist/index.d.ts
-# 0 → SDK ≤ 0.0.9; predefined sort cannot work, and CLI 0.0.7's SearchSorting.tsx will not typecheck (install.md)
+# 0 → SDK < 0.0.10; upgrade it — CLI ≥ 0.0.7's SearchSorting.tsx will not typecheck until you do (install.md)
 ls lib/search/retrieval.ts lib/search/enrichmentCategories.ts 2>/dev/null
 # missing → CLI ≤ 0.0.6; the ranking-aware components were not scaffolded — do not write them by hand
 ```
@@ -82,7 +82,7 @@ scores means no boost is ever sent, which is safe.
 
 ## Predefined sort (editor-pinned primary ordering)
 
-**SDK: not in 0.0.9; CLI 0.0.7 already codes against it.** The `predefinedSort` parameter on
+**SDK ≥ 0.0.10, CLI ≥ 0.0.7.** The `predefinedSort` parameter on
 Search Sort (type `predefinedSortConfig`) lets an editor pin a *primary* sort that belongs to
 the default ordering — the first order-by option, or no options at all, which then only breaks
 ties. When the visitor picks another option, only that option is sent.

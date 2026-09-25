@@ -3,7 +3,7 @@
 How the scaffolded components behave, so changes to them (renderers, styling, extra components)
 keep working with the definitions and the search service. File names are under
 `components/search/` after the CLI runs; this describes what `create-uniform-search@0.0.7`
-ships. Read the scaffolded files for anything not covered here — they are the source.
+ships (templates unchanged through 0.0.10). Read the scaffolded files for anything not covered here — they are the source.
 
 ## Provider and slots
 
@@ -95,7 +95,7 @@ project lists a type id **and** the CLI has written its file, do not write it by
 
 ### Search Box Autocomplete (`searchBoxAutocomplete`)
 
-**Not shipped by CLI 0.0.7** — the package defines the type (and allows it in `search-top`), but
+**Not shipped by CLI 0.0.7–0.0.10** — the package defines the type (and allows it in `search-top`), but
 no `SearchBoxAutocomplete.tsx` or `ui/AutocompletePanel.tsx` is written; leave it unmapped. In
 the starter, `SearchBoxAutocomplete` lives *inside* a Search Engine (`search-top` slot): it takes no
 `queryBy`/`entryUrlMapping` of its own but reads the engine's `performSearch`, `queryBy`,
@@ -132,7 +132,7 @@ scales to the whole index rather than a fetched page of entries.
 
 ### Related Content (`relatedContent`) with Product Card / Article Card
 
-**Starter-only as of CLI 0.0.7** — neither the definitions nor the files ship. A different mechanism from everything above: **no search request from the site**. `RelatedContent`
+**Starter-only as of CLI 0.0.10** — neither the definitions nor the files ship. A different mechanism from everything above: **no search request from the site**. `RelatedContent`
 is a heading plus an `items` slot rendered as a card grid. Authors drop Uniform's **Loop**
 component into the slot, point it at a **Uniform Search data resource** — the integration
 registers a `uniformSearch` data connector with two archetypes, `searchQuery` and `curatedList` —

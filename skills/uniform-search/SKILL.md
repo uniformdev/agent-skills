@@ -18,7 +18,7 @@ the components or the definitions.** The React `type` ids, parameter ids and slo
 the pushed definitions exactly, and the definitions use parameter types only the integration
 provides.
 
-What the CLI writes (verified with `create-uniform-search@0.0.7`, 33 files):
+What the CLI writes (verified with `create-uniform-search@0.0.10`; templates identical from 0.0.7 on, 33 files):
 
 ```text
 <srcRoot>/components/search/**   React components (client components) + Recommendations (server) + renderers + ui
@@ -72,11 +72,11 @@ push. Details per step: [references/install.md](references/install.md),
 7. **Reconcile the scaffold with what is installed.** Run `npx tsc --noEmit` now, before wiring
    anything, and fix exactly what it reports — recipes in
    [references/install.md](references/install.md#reconcile-the-scaffold). Known gaps by version:
-   CLI 0.0.7 + SDK 0.0.9 → `SearchSorting.tsx` imports a predefined-sort API the SDK does not
-   export yet (strip it, or wait for the SDK release); `enrichmentCategories.ts` needs a local
-   Context manifest (`uniform context manifest download`); `cachedProjectMapPaths.ts` needs
-   `cacheComponents` (or swap in the uncached fetch). CLI 0.0.6 → `projectMapClient.ts` sends no
-   `x-api-key` (add it).
+   CLI ≥ 0.0.7 always → `enrichmentCategories.ts` needs a local Context manifest
+   (`uniform context manifest download`) and `cachedProjectMapPaths.ts` needs `cacheComponents`
+   (or the uncached-fetch swap); CLI ≥ 0.0.7 with SDK < 0.0.10 → `SearchSorting.tsx` imports a
+   predefined-sort API that SDK lacks (upgrade the SDK; strip only if it is pinned); CLI 0.0.6 →
+   `projectMapClient.ts` sends no `x-api-key` (add it).
 8. **Register the search types in the existing resolver** without rewriting it. The scaffolded
    components use the compat (flattened-props) shape and register through
    `createAdapterResolveComponentFunction`; a plain `resolveComponent` delegates to that adapter
@@ -115,7 +115,7 @@ push. Details per step: [references/install.md](references/install.md),
 - **Ranking is configured by authors, not in code.** Retrieval mode is the `retrieval` select on
   Search Engine (leave it unset unless meaning-based matches are wrong for that placement);
   behavior relevancy is a sort option in Search Sort, and an editor-pinned primary sort is its
-  `predefinedSort` parameter (once the SDK that understands it is published). For per-visitor lists without a search
+  `predefinedSort` parameter (`@uniformdev/search` ≥ 0.0.10). For per-visitor lists without a search
   page use `Recommendations`; for curated or query-driven lists cached with the page use
   `RelatedContent` + a Loop over a Uniform Search data resource. Enrichment concepts live in the
   `uniform-enrichment-recommendations` skill — link, do not restate.
@@ -196,13 +196,12 @@ push. Details per step: [references/install.md](references/install.md),
   request is a browser-side `POST` with a public key.
 - **The CLI does not install `@uniformdev/search`, write env vars, or edit the resolver.** Its
   "Next steps" note lists what it left for you.
-- **`@uniformdev/search` 0.0.9 changes nothing at runtime.** Its `dist/` is byte-identical to
-  0.0.8; the release documents that `projectId` is no longer needed by the client.
-- **Not in `@uniformdev/search` 0.0.9:** `toPredefinedSortParam`, `PredefinedSortValue`,
-  `PredefinedSort`, the provider's `registerPredefinedSort` / `unregisterPredefinedSort`, and the
-  `predefinedSort` request field. The starter has them; CLI 0.0.7's `SearchSorting.tsx` already
-  uses them — which is why it does not typecheck against the published SDK (step 7).
-- **Not scaffolded by `create-uniform-search` 0.0.7:** `SearchBoxAutocomplete.tsx` and
+- **SDK versions that matter:** 0.0.7 `trackClick`; 0.0.8 the ranking exports; 0.0.9 the same code
+  with `projectId` documented optional; 0.0.10 the predefined-sort API (`toPredefinedSortParam`,
+  `resolveActivePredefinedSort`, `PredefinedSort*` types, the provider's `registerPredefinedSort`,
+  the `predefinedSort` request field) and nothing else. CLI ≥ 0.0.7 codes against 0.0.10, so an
+  older SDK fails typecheck (step 7).
+- **Not scaffolded by `create-uniform-search` 0.0.7–0.0.10 (identical templates):** `SearchBoxAutocomplete.tsx` and
   `ui/AutocompletePanel.tsx` (definition shipped, file not), `RelatedContent`, `ProductCard`,
   `ArticleCard` and their definitions, and click tracking in `SearchList` (`trackClick` exists in
   the SDK since 0.0.7; the scaffolded list does not call it).
@@ -217,6 +216,6 @@ push. Details per step: [references/install.md](references/install.md),
   detection, the Design Extensions parameter strip, the push hand-off, what the author does in Uniform afterwards
 - [Components](references/components.md) — how the scaffolded components behave at runtime: provider and
   slots, self-registration, renderers, autocomplete, typo tolerance, highlighting, localization, and the
-  what 0.0.7 adds (recommendations, retrieval, predefined sort) and what the starter still has ahead of it
+  what 0.0.7+ adds (recommendations, retrieval, predefined sort) and what the starter still has ahead of it
 - [Ranking](references/ranking.md) — retrieval mode (hybrid vs exact), behavior relevancy (enrichment
   boosting) and the editor-pinned predefined sort: request contracts, where each is wired, silent preconditions

@@ -48,7 +48,7 @@ awk '/interface SearchParams/,/^}/' node_modules/@uniformdev/search/dist/*.d.ts
 # ranking support: 0 hits → older than 0.0.8, retrieval mode and behavior relevancy do not apply
 grep -c "resolveEnrichmentBoost\|SearchMode" node_modules/@uniformdev/search/dist/index.d.ts
 
-# predefined sort: 0 hits → SDK ≤ 0.0.9; CLI 0.0.7's SearchSorting.tsx needs the strip in install.md
+# predefined sort: 0 hits → SDK < 0.0.10; upgrade it (CLI ≥ 0.0.7's SearchSorting.tsx imports it)
 grep -c "toPredefinedSortParam" node_modules/@uniformdev/search/dist/index.d.ts
 
 # click tracking: 0 hits → older than 0.0.7
