@@ -75,12 +75,14 @@ plugin.source.json          ← the only file you edit
 ```
 
 They are generated rather than kept by hand because each agent binds MCP credentials
-differently — Claude Code prompts for them through `userConfig`, while Cursor and Codex
-read environment variables. Hand-maintained copies of that drift silently.
+differently — Claude Code prompts for them through `userConfig`, Cursor declares them as
+plugin `variables` that users set under Plugins → Configure, and Codex reads environment
+variables. Hand-maintained copies of that drift silently.
 
 ```bash
 npm run build:plugins     # regenerate after editing plugin.source.json
-npm run validate:plugins  # what CI runs; fails if committed output is stale or orphaned
+npm run validate:plugins  # what CI runs; fails if committed output is stale or orphaned,
+                          # or if the Cursor output breaks Cursor's plugin schema
 ```
 
 The generated output is committed so the repository is installable straight from a

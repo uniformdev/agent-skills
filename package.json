@@ -7,7 +7,7 @@
     "validate": "node scripts/validate-skills.mjs",
     "typecheck:templates": "tsc -p tsconfig.templates.json",
     "build:plugins": "node scripts/build-plugins.mjs",
-    "validate:plugins": "node scripts/build-plugins.mjs --check",
+    "validate:plugins": "node scripts/build-plugins.mjs --check && node --test scripts/cursor-plugin.test.mjs",
     "eval": "npm run eval --prefix evals",
     "eval:status": "npm run eval:status --prefix evals",
     "eval:smoke": "npm run eval:smoke --prefix evals",
