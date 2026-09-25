@@ -253,13 +253,16 @@ Notes on reading particular fixtures:
   after `@uniformdev/search` 0.0.9 documented the key-identifies-the-project contract; both earlier
   pairs predate it and would fail that one assertion), and the hand-off. Deterministic only.
   The Uniform side — the push, the integration's parameter types, opening the page slot — is
-  not exercised, because fixtures do not call a live project. Two measured pairs so far (local
+  not exercised, because fixtures do not call a live project. Three measured pairs so far (local
   Docker sandbox, Claude Code on Sonnet, transcript assertions unasserted — see Known
-  limitations): baseline 1/10 in 648 s and 2/10 in 1011 s, with-skill 8/8 graded in 201 s and
-  10/10 in 393 s. Both cold runs hand-rolled a fetch client behind a proxy API route, invented
-  their own component set and type ids, and wrote definitions as `uniform-data/` YAML; both
-  skill runs scaffolded with the CLI, gated the resolver, and remapped the package to `en-US`.
-  Run artifacts stay local under the git-ignored `evals/results/`.
+  limitations). Against CLI 0.0.6 (10 assertions): baseline 1/10 in 648 s and 2/10 in 1011 s,
+  with-skill 8/8 graded in 201 s and 10/10 in 393 s. Against CLI 0.0.10 + SDK 0.0.10 with the
+  13-assertion grader: baseline 0/13 in 1057 s, with-skill **13/13 in 177 s** — it ran the CLI,
+  took SDK 0.0.10, wrote the manifest stub (placeholder credentials), swapped the cached
+  project-map helper for the direct fetch, mapped `recommendations` and left
+  `searchBoxAutocomplete` unmapped. Every cold run hand-rolled a fetch client behind a proxy
+  API route, invented its own component set and type ids, and wrote definitions as
+  `uniform-data/` YAML. Run artifacts stay local under the git-ignored `evals/results/`.
 - **Assertions strip comments before matching**, so an agent that quotes a rule back in a comment is
   not credited — or failed — for agreeing with it.
 - **The automations fixtures use the full discovery skip set** (`.claude`, `.agents`, `.cursor`,
