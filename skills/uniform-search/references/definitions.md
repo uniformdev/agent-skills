@@ -5,40 +5,40 @@
 rather than a folder of per-entity files). `uniformsearch.config.js` is the config that points at
 it. Together they push everything the search components need, and nothing the project already has.
 
-## What the package contains (create-uniform-search 0.0.6)
+## What the package contains (create-uniform-search 0.0.7)
 
 | Entity | Ids |
 |---|---|
 | Category | **Uniform Search** (every component below is filed under it) |
-| Components | `searchEngine`, `searchBox`, `searchAutocomplete`, `searchList`, `facetContainer`, `searchFacet`, `searchPagination`, `searchSorting` |
+| Components | `searchEngine`, `searchBox`, `searchAutocomplete`, `searchList`, `facetContainer`, `searchFacet`, `searchPagination`, `searchSorting`, `recommendations` — plus `searchBoxAutocomplete`, defined here but with no component file in the scaffold |
 | Block content types | `pageSize`, `orderBy`, `searchFacet` (backing the `$block` parameters on pagination, sort and facets) |
 | Component patterns | **Search Engine** (a pre-wired results page), **Search Autocomplete** (a header typeahead) |
 
 Check the shipped version with `node -e 'console.log(require("./search-components.json").components.map(c=>c.id))'`.
-The starter the CLI is synced from is ahead of 0.0.6; a newer CLI release adds
-`searchBoxAutocomplete`, `recommendations`, `relatedContent`, `productCard`, `articleCard`, a
-`retrieval` select on `searchEngine`, `filterBy` + `toleranceLevel` on `searchAutocomplete`,
-and explicit `allowedComponents` on the Search Engine slots. Map what the package lists; see
-[components.md](components.md#newer-components-starter-ahead-of-the-published-cli) for what each
-needs.
+The starter the CLI is synced from is still ahead: `relatedContent`, `productCard`, `articleCard`
+and the `SearchBoxAutocomplete.tsx` file are not in 0.0.7. Map only what has both a definition
+and a file; see [components.md](components.md#newer-components-starter-ahead-of-the-published-cli).
 
 Component ids, slots and the parameters the React code reads:
 
 | Type id | Slots | Parameters |
 |---|---|---|
-| `searchEngine` | `search-top`, `search-main`, `search-bottom` | `baseFilters` (filterByConfig), `entryUrlMapping` (entryUrlMapping), `queryBy` (queryByConfig), `toleranceLevel` (select: off/basic/aggressive) |
+| `searchEngine` | `search-top`, `search-main`, `search-bottom` (each with an explicit `allowedComponents` list) | `baseFilters` (filterByConfig), `entryUrlMapping` (entryUrlMapping), `queryBy` (queryByConfig), `toleranceLevel` (select: off/basic/aggressive), `retrieval` (select: hybrid/exact) |
 | `searchBox` | — | `label`, `placeholder`, `delay` (+ six `dex-*` presentation params the component ignores, see below) |
-| `searchAutocomplete` | — | `label`, `placeholder`, `delay`, `minChars`, `maxResults`, `resultsPath`, `viewAllText`, `noResultsText`, `queryBy`, `entryUrlMapping` |
+| `searchAutocomplete` | — | `label`, `placeholder`, `delay`, `minChars`, `maxResults`, `resultsPath`, `viewAllText`, `noResultsText`, `queryBy`, `entryUrlMapping`, `filterBy` (filterByConfig), `toleranceLevel` |
+| `searchBoxAutocomplete` | — | `label`, `placeholder`, `delay`, `minChars`, `maxResults`, `resultsPath`, `viewAllText`, `noResultsText` — **no component file shipped in 0.0.7; do not map** |
+| `recommendations` | — | `title`, `contentType`, `boostCategories`, `maxRecommendations` (number), `entryUrlMapping` |
 | `searchList` | — | `cardButtonText`, `noResultsFoundText`, `tryDifferentFiltersText`, `clearAllFilterText` |
 | `facetContainer` | `facets` | — |
 | `searchFacet` | — | `fieldKey` (facetByConfig), `type` (select/multiSelect/range), `title` |
 | `searchPagination` | — | `siblingCount`, `pageSizes` ($block of `pageSize`) |
-| `searchSorting` | — | `orderBy` ($block of `orderBy`) |
+| `searchSorting` | — | `orderBy` ($block of `orderBy`), `predefinedSort` (predefinedSortConfig — needs an SDK newer than 0.0.9, see install.md) |
 
-`filterByConfig`, `queryByConfig`, `facetByConfig`, `sortByConfig` and `entryUrlMapping` are
-parameter types registered by the `uniform-search-integration` Mesh integration
-(`locations.canvas.parameterTypes` in its manifest). They only resolve in a project where it is
-installed.
+`filterByConfig`, `queryByConfig`, `facetByConfig`, `sortByConfig`, `predefinedSortConfig` and
+`entryUrlMapping` are parameter types registered by the `uniform-search-integration` Mesh
+integration (`locations.canvas.parameterTypes` in its manifest). They only resolve in a project
+where it is installed, and `predefinedSortConfig` only on a deployment updated since it was
+added — on an older one the parameter shows as an unknown editor and is harmless.
 
 ## The config
 
@@ -93,7 +93,7 @@ field, not a search collection name. After the run, confirm the CLI's
 
 ## Strip the Design Extensions parameters
 
-The 0.0.6 package's `searchBox` carries six parameters typed `dex-segmented-control-parameter`,
+The package's `searchBox` (unchanged through 0.0.7) carries six parameters typed `dex-segmented-control-parameter`,
 `dex-token-selector-parameter` and `dex-color-palette-parameter` (in two groups, "Presentation
 Settings" and "Label"). Those types come from the Design Extensions integration, and
 `SearchBox.tsx` reads none of them. Unless Design Extensions is installed in the project, remove

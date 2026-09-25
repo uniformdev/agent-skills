@@ -18,11 +18,12 @@ the components or the definitions.** The React `type` ids, parameter ids and slo
 the pushed definitions exactly, and the definitions use parameter types only the integration
 provides.
 
-What the CLI writes (verified with `create-uniform-search@0.0.6`):
+What the CLI writes (verified with `create-uniform-search@0.0.7`, 33 files):
 
 ```text
-<srcRoot>/components/search/**   React components (client components) + renderers + ui
-<srcRoot>/lib/search/**          searchClient (createSearchClient), projectMapClient, typoTolerance
+<srcRoot>/components/search/**   React components (client components) + Recommendations (server) + renderers + ui
+<srcRoot>/lib/search/**          searchClient, projectMapClient, typoTolerance, retrieval,
+                                 enrichmentCategories, cachedProjectMapPaths
 <srcRoot>/styles/search-theme.css  Tailwind v4 @theme block: the mono-* palette the components use
 ./search-components.json         one CLI "package" file: component definitions, block content
                                  types, the "Uniform Search" category, two component patterns
@@ -53,8 +54,8 @@ push. Details per step: [references/install.md](references/install.md),
    code from step 2 (`en`, `en-US`). `--no-deploy` keeps the push with the user; `--no-skill`
    stops it installing its own copy of a Claude skill next to this one.
 4. **Install `@uniformdev/search`** with the project's package manager — the CLI does not.
-   Take the latest (0.0.8 adds the ranking exports; 0.0.7 added `trackClick`). Then read what
-   you actually got, because the starter is ahead of what is published:
+   Take the latest. Then read what you actually got, because the CLI, the SDK and the starter
+   are released independently and are not always in step (see step 7):
    `search-components.json` lists the component types this CLI version ships, and
    `node_modules/@uniformdev/search/dist/index.d.ts` is the SDK surface you can code against.
    Anything in [references/components.md](references/components.md#newer-components-starter-ahead-of-the-published-cli)
@@ -66,13 +67,16 @@ push. Details per step: [references/install.md](references/install.md),
    (`NEXT_PUBLIC_UNIFORM_SEARCH_API_URL`, `NEXT_PUBLIC_UNIFORM_SEARCH_API_KEY`) and, for
    localized projects only, `NEXT_PUBLIC_UNIFORM_DEFAULT_LOCALE`. The key is a project-scoped
    `ufs.…` key the user generates from **Connect** in the Uniform Search dashboard; it identifies
-   the project, so no project id is part of the contract (see the env section of install.md for
-   what the 0.0.6 scaffold still expects). Leave unknown values blank; never overwrite a populated
-   value; never echo secrets.
-7. **Patch the scaffolded project-map client.** `create-uniform-search` 0.0.6 writes a
-   `lib/search/projectMapClient.ts` that calls `/api/project-map` **without** the `x-api-key`
-   header. That endpoint fails closed, so composition hits silently get no URLs. Add the header —
-   one line, recipe in [references/install.md](references/install.md#patch-the-project-map-client).
+   the project, so no project id is part of the contract. Leave unknown values blank; never
+   overwrite a populated value; never echo secrets.
+7. **Reconcile the scaffold with what is installed.** Run `npx tsc --noEmit` now, before wiring
+   anything, and fix exactly what it reports — recipes in
+   [references/install.md](references/install.md#reconcile-the-scaffold). Known gaps by version:
+   CLI 0.0.7 + SDK 0.0.9 → `SearchSorting.tsx` imports a predefined-sort API the SDK does not
+   export yet (strip it, or wait for the SDK release); `enrichmentCategories.ts` needs a local
+   Context manifest (`uniform context manifest download`); `cachedProjectMapPaths.ts` needs
+   `cacheComponents` (or swap in the uncached fetch). CLI 0.0.6 → `projectMapClient.ts` sends no
+   `x-api-key` (add it).
 8. **Register the search types in the existing resolver** without rewriting it. The scaffolded
    components use the compat (flattened-props) shape and register through
    `createAdapterResolveComponentFunction`; a plain `resolveComponent` delegates to that adapter
@@ -110,7 +114,8 @@ push. Details per step: [references/install.md](references/install.md),
   to the existing logic. If the project already uses the adapter, just add the mappings.
 - **Ranking is configured by authors, not in code.** Retrieval mode is the `retrieval` select on
   Search Engine (leave it unset unless meaning-based matches are wrong for that placement);
-  behavior relevancy is a sort option in Search Sort. For per-visitor lists without a search
+  behavior relevancy is a sort option in Search Sort, and an editor-pinned primary sort is its
+  `predefinedSort` parameter (once the SDK that understands it is published). For per-visitor lists without a search
   page use `Recommendations`; for curated or query-driven lists cached with the page use
   `RelatedContent` + a Loop over a Uniform Search data resource. Enrichment concepts live in the
   `uniform-enrichment-recommendations` skill — link, do not restate.
@@ -140,29 +145,40 @@ push. Details per step: [references/install.md](references/install.md),
   so the prop is always `"searchFacet"`; the component reads the facet type from
   `component.parameters.type.value` instead. Do not "simplify" that.
 - **Integration-provided parameter types.** `filterByConfig`, `queryByConfig`, `facetByConfig`,
-  `sortByConfig`, `entryUrlMapping` resolve only when `uniform-search-integration` is installed.
-  The 0.0.6 package's `searchBox` additionally carries six presentation parameters typed by the
-  Design Extensions integration (`dex-*`) that the component never reads — strip them unless
-  Design Extensions is installed.
-- **The project-map call needs the key, and the scaffold does not send it.** `/api/project-map`
-  returns 401 without a valid `x-api-key` (it fails closed even on deployments where `/api/search`
-  is open); the 0.0.6 `projectMapClient.ts` sends none, logs `project map fetch failed: 401` to
-  the browser console only, and returns an empty map — every composition hit renders without a
-  link. Patch it after scaffolding (install.md).
+  `sortByConfig`, `predefinedSortConfig`, `entryUrlMapping` resolve only when
+  `uniform-search-integration` is installed — and `predefinedSortConfig` only on a deployment
+  updated since it was added. The package's `searchBox` additionally carries six presentation
+  parameters typed by the Design Extensions integration (`dex-*`) that the component never reads
+  — strip them unless Design Extensions is installed.
+- **The project-map call needs the key.** `/api/project-map` returns 401 without a valid
+  `x-api-key` (it fails closed even on deployments where `/api/search` is open). CLI 0.0.7 sends
+  it; the 0.0.6 scaffold did not — it logged `project map fetch failed: 401` to the browser
+  console only and returned an empty map, so every composition hit rendered without a link.
 - **A managed key pins the project.** Requests carrying a `ufs.…` key are bound to the project
   the key was minted for: a `projectId` that names another project is a 401, an omitted one is
-  filled in. The scaffold still reads `NEXT_PUBLIC_UNIFORM_PROJECT_ID` — leave it unset, or set it
-  to the key's own project, never to anything else.
+  filled in. Nothing scaffolded by 0.0.7 reads `NEXT_PUBLIC_UNIFORM_PROJECT_ID` any more; if an
+  older scaffold or the project itself sets it, it must be the key's own project.
+- **`searchBoxAutocomplete` is defined but not shipped.** The 0.0.7 package defines the type and
+  allows it in the Search Engine's `search-top` slot, but the CLI writes no
+  `SearchBoxAutocomplete.tsx`. Do not map it and do not write it; an author who places it gets
+  the resolver's not-found fallback until a CLI release ships the file.
+- **Enabling `cacheComponents` is a project-wide change.** `cachedProjectMapPaths.ts` uses
+  `'use cache'`, which Next refuses to build without `cacheComponents: true`; turning it on then
+  makes every route that reads request data outside `<Suspense>` fail to prerender (the v2
+  starter's `/playground/[code]` does). Unless the project already runs cache components, take
+  the uncached path in install.md instead.
 - **`--yes` skips existing files.** Re-running the CLI with `-y` leaves an earlier copy in place;
   without it, existing files are overwritten in non-interactive mode.
 - **Behavior relevancy has two silent preconditions.** Documents indexed before the
   `enrichmentTags` field existed carry no tags — a reindex is what fills them, a schema save
   alone does not — and selecting the behavior sort forces keyword retrieval for that request, so
   hybrid/semantic ranking is off while it is active. Both look like "boosting does nothing".
-- **`Recommendations` is a server component with its own prerequisites** — `@uniformdev/context`,
-  Next.js `cacheComponents`, and the manifest import path in `lib/search/enrichmentCategories.ts`.
-  Copying it into a project without them fails at build time or, for the manifest path, at
-  runtime with an empty category list.
+- **`Recommendations` is a server component with its own prerequisites** — `@uniformdev/context`
+  (the v2 starter has it), either `cacheComponents` or the uncached-fetch swap, and a Context
+  manifest at `lib/uniform/manifest.json` for `enrichmentCategories.ts`. The v2 starter fetches
+  its manifest at runtime and has no such file, so the import fails typecheck until
+  `npx uniform context manifest download --output ./lib/uniform/manifest.json` is run; a
+  manifest with no enrichment categories simply disables boosting.
 - **Public env vars are inlined at build time.** The client reads `NEXT_PUBLIC_*`; a value
   added after the build is not picked up until the next build.
 
@@ -181,16 +197,15 @@ push. Details per step: [references/install.md](references/install.md),
 - **The CLI does not install `@uniformdev/search`, write env vars, or edit the resolver.** Its
   "Next steps" note lists what it left for you.
 - **`@uniformdev/search` 0.0.9 changes nothing at runtime.** Its `dist/` is byte-identical to
-  0.0.8; the release documents that `projectId` is no longer needed by the client. Every
-  behavioural claim about 0.0.8 holds.
-- **Not scaffolded by `create-uniform-search` 0.0.6** (the current release): the
-  `searchBoxAutocomplete`, `recommendations`, `relatedContent`, `productCard` and `articleCard`
-  definitions and components, `lib/search/retrieval.ts`, `enrichmentCategories.ts`,
-  `cachedProjectMapPaths.ts`, and the `retrieval` parameter on Search Engine. The SDK side
-  (`resolveEnrichmentBoost`, `EnrichmentBoost`, `SearchParams.mode`, the `enrichmentBoost`
-  request field, the `behavior` order-by) **is** published in `@uniformdev/search` 0.0.8. Until a
-  newer CLI ships the components, the SDK exports alone give you nothing to map — verify with
-  the checks in ranking.md before relying on either half.
+  0.0.8; the release documents that `projectId` is no longer needed by the client.
+- **Not in `@uniformdev/search` 0.0.9:** `toPredefinedSortParam`, `PredefinedSortValue`,
+  `PredefinedSort`, the provider's `registerPredefinedSort` / `unregisterPredefinedSort`, and the
+  `predefinedSort` request field. The starter has them; CLI 0.0.7's `SearchSorting.tsx` already
+  uses them — which is why it does not typecheck against the published SDK (step 7).
+- **Not scaffolded by `create-uniform-search` 0.0.7:** `SearchBoxAutocomplete.tsx` and
+  `ui/AutocompletePanel.tsx` (definition shipped, file not), `RelatedContent`, `ProductCard`,
+  `ArticleCard` and their definitions, and click tracking in `SearchList` (`trackClick` exists in
+  the SDK since 0.0.7; the scaffolded list does not call it).
 
 ## Resources
 
@@ -202,6 +217,6 @@ push. Details per step: [references/install.md](references/install.md),
   detection, the Design Extensions parameter strip, the push hand-off, what the author does in Uniform afterwards
 - [Components](references/components.md) — how the scaffolded components behave at runtime: provider and
   slots, self-registration, renderers, autocomplete, typo tolerance, highlighting, localization, and the
-  newer set the starter ships ahead of the CLI (search-box autocomplete, recommendations, related content + cards)
-- [Ranking](references/ranking.md) — retrieval mode (hybrid vs exact) and behavior relevancy (enrichment
-  boosting): the request contract, where it is wired, and the two silent preconditions
+  what 0.0.7 adds (recommendations, retrieval, predefined sort) and what the starter still has ahead of it
+- [Ranking](references/ranking.md) — retrieval mode (hybrid vs exact), behavior relevancy (enrichment
+  boosting) and the editor-pinned predefined sort: request contracts, where each is wired, silent preconditions

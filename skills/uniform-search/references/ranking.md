@@ -1,14 +1,16 @@
 # Ranking: retrieval mode and behavior relevancy
 
-Two ranking controls exist in the current search starter. Both need two things: the SDK exports
-(`@uniformdev/search` **0.0.8 or later**) and the component code that uses them, which
-`create-uniform-search` 0.0.6 does not scaffold. Check both before writing code against them:
+Three ranking controls exist in the current search starter. Each needs two things: the SDK
+exports and the component code that uses them, and they are released separately. Check both
+before writing code against any of them:
 
 ```bash
 grep -c "resolveEnrichmentBoost\|SearchMode" node_modules/@uniformdev/search/dist/index.d.ts
-# 0 → SDK older than 0.0.8; upgrade before anything below can work
+# 0 → SDK older than 0.0.8; retrieval mode and behavior relevancy cannot work
+grep -c "toPredefinedSortParam" node_modules/@uniformdev/search/dist/index.d.ts
+# 0 → SDK ≤ 0.0.9; predefined sort cannot work, and CLI 0.0.7's SearchSorting.tsx will not typecheck (install.md)
 ls lib/search/retrieval.ts lib/search/enrichmentCategories.ts 2>/dev/null
-# missing → the CLI version did not ship the ranking-aware components; do not write them by hand
+# missing → CLI ≤ 0.0.6; the ranking-aware components were not scaffolded — do not write them by hand
 ```
 
 ## Retrieval mode (`retrieval` on Search Engine)
@@ -77,3 +79,30 @@ scores means no boost is ever sent, which is safe.
   validates every token, clamps scores to 1..100 and keeps at most 3 signals.
 - Never cache personalised ordering publicly: `/api/search` is a POST for that reason, and
   anything reading `ufvd` must sit in a dynamic (Suspense) subtree under cache components.
+
+## Predefined sort (editor-pinned primary ordering)
+
+**SDK: not in 0.0.9; CLI 0.0.7 already codes against it.** The `predefinedSort` parameter on
+Search Sort (type `predefinedSortConfig`) lets an editor pin a *primary* sort that belongs to
+the default ordering — the first order-by option, or no options at all, which then only breaks
+ties. When the visitor picks another option, only that option is sent.
+
+| Mode | Stored value (what the editor writes) | What the engine sorts by |
+|---|---|---|
+| Field | `{ mode: 'field', field: 'created', direction: 'desc' }` | `created:desc` |
+| Behavior relevancy | `{ mode: 'field', field: '$behavior', direction: 'desc' }` | the per-visitor `_eval` from the section above |
+| Conditional | `{ mode: 'conditional', direction: 'desc', rules: [{ filterString: 'inStock:=true' }, …] }` | `_eval([(rule1):N, …, (ruleN):1]):desc` — rule order is priority; `asc` puts matches last |
+
+`SearchSorting.tsx` converts the stored value with `toPredefinedSortParam` and registers it with
+the provider; the request then carries `predefinedSort` alongside `orderBy`. Server-side, a
+field must be sortable in the collection schema and a rule must be a single-line, balanced
+Typesense filter; anything invalid is dropped silently, never a request error, and rules with an
+unresolved `${token}` are skipped.
+
+Two traps, both silent:
+
+- **One `_eval` per request.** Typesense allows a single conditional clause, so a conditional
+  predefined sort wins over a visitor's *Behavior relevancy* choice — the visitor's `_eval` is
+  dropped and the response carries a `warnings[]` entry. Read `warnings` when a sort seems ignored.
+- **Three `sort_by` clauses total.** Predefined first, visitor sort, then tiebreakers, deduped
+  and capped at three; with behavior relevancy in play, `updated:desc` is the one that falls off.
