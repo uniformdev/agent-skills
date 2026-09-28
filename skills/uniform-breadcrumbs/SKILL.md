@@ -14,9 +14,8 @@ request URL. Uniform already stores the hierarchy, the author-facing label for e
 the path template for every level — a breadcrumb component's whole job is to read that tree,
 ask the Route API for each page's title, and render it.
 
-Project map fundamentals — nodes, dynamic inputs, route matching — live in the `uniform-sdk`
-skill ([references/routing.md](../uniform-sdk/references/routing.md)). This skill assumes them
-and does not restate them.
+Project map fundamentals — nodes, dynamic inputs, route matching — are in the `uniform-sdk`
+skill ([references/routing.md](../uniform-sdk/references/routing.md)).
 
 ## The two rules everything else follows
 
@@ -56,9 +55,8 @@ Everything below is a pure function of these. Get them once, at the top of the c
 | `state` | `CANVAS_PUBLISHED_STATE` (64) or `CANVAS_DRAFT_STATE` (0) |
 | `releaseId` | The release being previewed, or `undefined`. Without it an editor previewing a release sees base titles |
 
-Every SDK that resolves a route carries all five. Which object holds them is your framework
-SDK's business — find them rather than assuming:
-[references/discovery.md](references/discovery.md).
+Every SDK that resolves a route carries all five. Which object holds them differs per SDK —
+find them rather than assuming: [references/discovery.md](references/discovery.md).
 
 ## The pipeline
 
@@ -169,9 +167,8 @@ factories are the answer.
 
 ## Framework specifics
 
-This skill is framework-neutral by design. Where the five inputs live, whether the trail is
-built in a server component or a loader, and how the SDK's own clients cache are your framework
-SDK's business:
+Where the five inputs live, whether the trail is built in a server component or a loader, and
+how the SDK's own clients cache are in the framework skills:
 
 - **Next.js App Router** — [uniform-nextjs-app-router](../uniform-nextjs-app-router/SKILL.md),
   whose `references/advanced.md` covers `getProjectMapClient` and `getRouteClient`. Prefer them

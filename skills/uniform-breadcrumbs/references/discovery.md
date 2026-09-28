@@ -103,8 +103,7 @@ resolver and read its return type before falling back to `projectMapNodes`.
 | `releaseId` | The release being previewed — on the page state (App Router) or the preview data (Page Router) |
 
 Framework SDK mechanics — where that context comes from, and which clients are server-only —
-belong to the framework skill, not this one. See
-[uniform-nextjs-app-router](../../uniform-nextjs-app-router/SKILL.md) and
+are in [uniform-nextjs-app-router](../../uniform-nextjs-app-router/SKILL.md) and
 [uniform-nextjs-page-router](../../uniform-nextjs-page-router/SKILL.md).
 
 ## 5. Which parameter is the page's title?

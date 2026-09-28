@@ -264,11 +264,10 @@ hundred bytes with one parameter and no slots.
 ## Wiring it to a page
 
 Only one thing is breadcrumb-specific here: mapping your SDK's route context onto the five
-inputs and handing over its clients. Everything else — where that context comes from, which
-clients are server-only, how the composition route is structured — belongs to the framework
-skill ([uniform-nextjs-app-router](../../uniform-nextjs-app-router/SKILL.md),
-[uniform-nextjs-page-router](../../uniform-nextjs-page-router/SKILL.md)), and this skill does
-not restate it.
+inputs and handing over its clients. Where that context comes from, which clients are
+server-only and how the composition route is structured are in the framework skills —
+[uniform-nextjs-app-router](../../uniform-nextjs-app-router/SKILL.md) and
+[uniform-nextjs-page-router](../../uniform-nextjs-page-router/SKILL.md).
 
 Both shipped Next.js SDKs already carry the matched route and the dynamic inputs — they are what
 route matching produced, so no SDK has to reconstruct them. Confirm the names in the installed
