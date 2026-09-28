@@ -1,10 +1,10 @@
 ---
 name: uniform-breadcrumbs
-description: Building a breadcrumb trail in a Uniform frontend from the project map node hierarchy — resolving the current node, walking its ancestors with the project map client, titling each crumb through the Route API with a `select` projection, expanding dynamic and localized paths, and rendering accessible markup with BreadcrumbList structured data. Use when adding breadcrumbs or a "you are here" trail to a Uniform page, deriving parent-page links from project map ancestors, or fixing a trail that shows raw slugs, unexpanded `:token` links, unresolved `${...}` titles, wrong-locale or wrong-edition titles, duplicate titles on dynamic pages, or a home crumb that 404s.
+description: Building a breadcrumb trail in a Uniform frontend from the project map node hierarchy — resolving the current node, walking its ancestors with the project map client, titling each crumb through the Route API with a `select` projection, expanding dynamic and localized paths, and rendering accessible markup with BreadcrumbList structured data. Use when adding breadcrumbs or a "you are here" trail to a Uniform page, deriving parent-page links from project map ancestors, or fixing a trail that shows raw slugs, unexpanded `:token` links, unresolved `${...}` titles, wrong-locale or wrong-edition titles, duplicate titles on dynamic pages, or a home crumb that 404s. Also use when a breadcrumb trail is slow or delays the page render, to decide whether it should be cached or streamed behind a Suspense boundary.
 license: MIT
 metadata:
   author: uniformdev
-  version: "1.1.1"
+  version: "1.2.0"
 ---
 
 # Breadcrumbs from the Uniform project map
@@ -83,7 +83,7 @@ That produces the data. Shipping it is the other half.
 
 ## What "done" means
 
-All five, or the feature is half-built. Each one is the part someone reliably drops:
+All six, or the feature is half-built. Each one is the part someone reliably drops:
 
 - **Its own component, registered in the project's component resolver** — the same way every
   other component type there is registered. Building the trail inside the page component works
@@ -98,7 +98,11 @@ All five, or the feature is half-built. Each one is the part someone reliably dr
   or a single crumb. Never a thrown error, never a placeholder message in production markup.
   Every network call the trail makes is wrapped in a `try/catch` that logs and degrades — the
   tree fetch to an empty trail, a title fetch to the node name — inside the trail module, so
-  no caller can forget it.
+  no caller can forget it. This is also why a Suspense fallback here is not free: it renders
+  before anyone knows the trail is empty. See the streaming rule below.
+- **The trail does not block the page.** Its requests sit in front of the render, and on a cold
+  cache that is most of half a second of nothing. Cache first; give the component a Suspense
+  boundary for the states caching cannot reach.
 - **Server-side only.** Both clients carry `UNIFORM_API_KEY`, and `@uniformdev/project-map` has
   no `server-only` guard.
 
@@ -129,6 +133,28 @@ take the first non-empty value.
 | `type: "composition"` whose Route API result is `notFound` at published state | **No.** The node exists; the page has never been published |
 | The current page (last crumb) | **No.** `aria-current="page"`, not an anchor |
 
+**Give it a Suspense boundary. Always.** The trail's requests run before the page can render,
+so the question is never "is this fast" but "is the page waiting". Caching answers that for
+repeat traffic and nothing else: a cold cache, the first visitor after a deploy, draft, preview,
+a release and in-context editing all pay the full round trip, and an author can place this
+component on any page. You cannot know from inside the component that the cache will be warm.
+
+The boundary costs nothing when it is: the data is already there, the subtree resolves, no
+fallback paints. It is the case where it is *not* warm that decides, and that case always
+exists.
+
+Declare it where you already register the component — `resolveComponent` takes a `suspense`
+entry, so neither the trail module nor the component changes:
+
+```tsx
+return { component: Breadcrumbs, suspense: { fallback: BreadcrumbsFallback } };
+```
+
+`fallback` is a component, not an element. **And do not reach for a skeleton by reflex:** this
+component renders nothing on pages with no trail, and a skeleton in front of those flashes and
+then disappears, shifting the top of the page twice. Choosing it is the real decision —
+[references/rendering.md](references/rendering.md#the-suspense-fallback) has the rule.
+
 **Server only.** Both clients authenticate with `UNIFORM_API_KEY`. Build the trail in a server
 component, loader, or `getServerSideProps`. Unlike the framework SDK's client helpers,
 `@uniformdev/project-map` carries no `server-only` guard — importing it into a client component
@@ -154,6 +180,11 @@ SDK's business:
 - **Next.js Page Router** — [uniform-nextjs-page-router](../uniform-nextjs-page-router/SKILL.md).
   No factories here: build the two clients yourself, behind a lazy accessor in its own module,
   and call it from inside the route handler.
+
+The two are not symmetric on latency, and the difference decides where the trail can afford to
+be slow. The App Router can stream the trail out of the critical path; the Page Router cannot —
+`getServerSideProps` runs before any byte is sent, so the trail blocks the whole response. There
+the only levers are caching and skipping the work on pages that will not render it.
 
 The per-SDK mapping — which field feeds which input — is in
 [references/discovery.md](references/discovery.md), as greps you run against the installed
@@ -222,8 +253,9 @@ See `references/` for detailed guidance:
   writing anything
 - [Building the trail](references/building-the-trail.md) — the complete `getBreadcrumbTrail`
   module with both clients, SDK wiring, titles through the Route API, dynamic paths, localized
-  paths, and caching
+  paths, and what the trail costs the page: caching, cache tags, and streaming it behind a
+  boundary
 - [Rendering](references/rendering.md) — markup and accessibility, separators, home crumb,
-  truncating deep trails, and `BreadcrumbList` structured data
+  truncating deep trails, the Suspense fallback, and `BreadcrumbList` structured data
 - [Edge cases](references/edge-cases.md) — root pages, placeholder and unpublished ancestors,
   patterns and playground, multiple project maps, and query-string nodes

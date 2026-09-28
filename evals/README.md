@@ -277,8 +277,23 @@ the project map, so unlike `nextjs-app-router-add-component` this brownfield tas
 rather than only guarding against drift — which it does: 0% → 100%, below.
 
 Assertions are name-independent (the prompt dictates no component type name) and strip comments
-before matching, so an agent cannot pass by quoting the requirement in a `// TODO`. 15 tests: 14
+before matching, so an agent cannot pass by quoting the requirement in a `// TODO`. 17 tests: 16
 deterministic plus one judge criterion.
+
+Two of those cover render blocking, and they are **App Router only** — the Page Router twin has
+no streaming escape hatch, so its copy of the suite deliberately omits them. The first requires
+a Suspense boundary to exist, accepting either mechanism: a `suspense` entry on the
+`resolveComponent` result, or a React `<Suspense>` the component renders around its own async
+work. The skill makes the boundary unconditional — an author can place the trail on any page
+and the component cannot know the cache will be warm — so asserting its presence mirrors the
+skill rather than outrunning it. The second fires only if the resolver mechanism was used, and
+checks `fallback` is a component reference rather than a JSX element, because the SDK calls
+`createElement()` on it and an element breaks at runtime.
+
+Validated offline against captured trees before any paid run: the previous winning
+implementation, which has no boundary, fails the first and nothing else; adding
+`suspense: { fallback: BreadcrumbsFallback }` to its resolver takes it to 16/16; and changing
+that to `fallback: <BreadcrumbsFallback />` fails the second.
 
 The fixture carries a synced page component definition at `uniform-data/component/page.yaml`
 whose `titleParameter` is `headline` — deliberately neither `title` nor `pageTitle`. The skill
@@ -355,6 +370,31 @@ arm was re-run on the current fixture, everything else held constant:
 
 The agent wrote `const TITLE_PARAMETER = "headline"` — it read the value out of the definition
 rather than guessing it, which is the whole of what the assertion was added to check.
+
+#### 2026-09-28, re-measured after the render-blocking assertions
+
+The skill gained streaming guidance and this fixture gained two assertions for it, so the arm
+was run again:
+
+| Arm | Skill installed | Pass | Wall-clock |
+|---|---|---|---|
+| `breadcrumbs-suspense` | Route API titles + streaming (shipped) | **100%** (16/16 + judge) | 382s |
+
+The interesting part is not the number but what the agent wrote:
+
+```ts
+result = { component: BreadcrumbsComponent, suspense: { fallback: undefined } };
+```
+
+`fallback: undefined`, not a skeleton. The assertion only requires that *a* boundary exists, so
+a skeleton would have passed it just as well. Picking the empty fallback means the reasoning
+transferred, not the keyword — the skill's argument is that this component renders nothing on
+pages with no trail, so reserving space in front of it shifts the page twice. That is the kind
+of thing a deterministic assertion cannot ask for and should not try to.
+
+The baselines were not re-run. Unlike the `titleParameter` change, this one added no files to
+the starter tree — only assertions — so the control reads exactly the project it read before,
+and an added assertion cannot raise a 0%.
 
 **The control was re-run too, and it was not optional.** `uniform-data/component/page.yaml` sits
 in the starter tree the control reads as well, so the recorded 0% had been measured against a
@@ -457,6 +497,7 @@ since changed; the incumbent and both baselines have one failing run each.
 
 #### 2026-09-22, re-measured after the `titleParameter` assertion
 
+Unaffected by the two render-blocking assertions, which exist only on the App Router side.
 Same story as on the App Router: the numbers above predate the component definition and the
 sixteenth deterministic test, and that run passed `titleParameter: ["title", "pageTitle"]` from
 `pages/[[...path]].tsx`. Offline against the captured tree the new suite scores **15 of 16**,
@@ -469,7 +510,13 @@ failing only the new assertion. Re-run on the current fixture:
 
 The agent wrote `const TITLE_PARAMETER = 'headline'` in the route module — same result as on the
 App Router, from the same definition, which is the evidence that reading the title parameter is a
-property of the skill rather than of one framework's wiring. Its baseline failed the same six
+property of the skill rather than of one framework's wiring.
+
+Re-run on 2026-09-28 alongside the App Router arm, because the skill changed for both even
+though only the App Router fixture gained assertions: **100%** (16/16 + judge), 418s. The
+produced project contains no `Suspense` anywhere, which is the correct outcome — the skill tells
+the Page Router to cache and skip rather than stream, because `getServerSideProps` has no
+boundary to hide behind. Its baseline failed the same six
 assertions as the App Router's, and the same five as its own first run plus the new one. Both
 fixtures ran under one temporary `breadcrumbs-titleparam` / `breadcrumbs-titleparam-baseline`
 pair, since deleted.

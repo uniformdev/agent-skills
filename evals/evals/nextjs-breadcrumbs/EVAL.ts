@@ -277,6 +277,34 @@ test('extends the existing project instead of replacing its config', () => {
   ).not.toContain('UniformContext');
 });
 
+// App Router only — the Page Router twin has no streaming escape hatch, so its copy of this
+// suite deliberately does not assert this.
+test('the trail does not block the page render', () => {
+  const src = code();
+  // Either mechanism is correct: the SDK's per-component boundary, declared on the
+  // resolveComponent result, or a React <Suspense> the component renders around its own
+  // async work. What is asserted is that a boundary exists at all.
+  const viaResolver = /suspense\s*:/.test(src);
+  const viaReact = /<Suspense[\s/>]/.test(src);
+  expect(
+    viaResolver || viaReact,
+    'the trail awaits a project map call plus one route call per ancestor before it can ' +
+      'render, and an author can place it on any page — without a Suspense boundary the whole ' +
+      'page waits for it. Declare one on the resolveComponent result (`suspense: { fallback }`) ' +
+      'or wrap the async work in <Suspense>'
+  ).toBe(true);
+});
+
+test('the Suspense fallback is a component, not an element', () => {
+  const src = code();
+  if (!/suspense\s*:/.test(src)) return; // hand-rolled <Suspense fallback={<X/>}/> is correct JSX
+  expect(
+    src,
+    'on the resolveComponent result the SDK calls createElement() on `fallback`, so it must be ' +
+      'a component reference — `fallback: BreadcrumbsFallback`, never `fallback: <BreadcrumbsFallback />`'
+  ).not.toMatch(/fallback\s*:\s*</);
+});
+
 test('the trail is correct, safe, and built on the server', async () => {
   await expect(environment).toSatisfyCriterion(
     'This is a breadcrumbs component for a Uniform CMS site in a Next.js App Router project, ' +

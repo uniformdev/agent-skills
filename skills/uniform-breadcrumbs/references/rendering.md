@@ -15,6 +15,7 @@ part that matters, and none of them depend on the framework.
 - [Separators](#separators)
 - [The home crumb](#the-home-crumb)
 - [Deep trails](#deep-trails)
+- [The Suspense fallback](#the-suspense-fallback)
 - [BreadcrumbList structured data](#breadcrumblist-structured-data)
 
 ## The component
@@ -142,6 +143,43 @@ ellipsis with no name. Always keep the home crumb and the last two visible.
 
 Do not truncate by slicing the array on the server. The crumbs you drop are also dropped from
 the structured data, and a crawler then sees a different hierarchy than the one that exists.
+
+## The Suspense fallback
+
+When the trail is behind a Suspense boundary
+([building-the-trail.md](building-the-trail.md#stream-what-caching-cannot-cover)), something
+renders in its place first — and the obvious choice is wrong often enough to be worth a section.
+
+**The trap: this component renders nothing on a page with no trail.** `BreadcrumbsView` returns
+`null` below two crumbs, and the module returns an empty trail for a root page, a page one level
+down, a pattern preview, a playground render and any API failure. A fallback does not know that
+yet. Put a skeleton in front of those pages and the visitor gets a grey bar that appears and
+then vanishes — content that should never have existed, and layout shift in *both* directions,
+at the very top of the page.
+
+That is not a cosmetic quibble. CLS is a Core Web Vital, and rich-result eligibility is the
+whole reason this skill insists on `BreadcrumbList` at all. A trail that improves TTFB and
+regresses CLS above the fold can lose more than it wins.
+
+| Where the component sits | Fallback |
+|---|---|
+| Only on pages deep enough to have a trail | A skeleton reserving the trail's **exact** rendered height — same font size, same line height, same margins |
+| Also on pages where the trail comes back empty — the usual case, since authors place it | **`suspense: { fallback: undefined }`.** A boundary with no fallback: nothing is reserved, nothing flashes, the page streams and the trail appears when ready |
+
+The boundary itself is not in question — it goes in either way. What varies is what renders in
+its place, and `undefined` is a legitimate answer, not a cop-out.
+
+`fallback: undefined` is legal and is the boundary-without-a-fallback form; `suspense: {}` does
+not type-check. Reserving zero space still shifts the page once when the trail arrives, but only
+downward and only on pages that really have a trail — strictly better than a skeleton that has
+to be taken away again.
+
+Measure the skeleton against the real thing rather than guessing at a height. A trail that wraps
+to two lines on mobile and one on desktop needs a fallback that does the same, or the shift
+follows you to the breakpoint.
+
+The JSON-LD below renders from the same array, so it sits inside the boundary and streams with
+the trail. That is fine: it lands in the HTML, and crawlers process streamed markup.
 
 ## BreadcrumbList structured data
 

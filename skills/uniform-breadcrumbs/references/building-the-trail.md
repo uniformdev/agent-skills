@@ -8,7 +8,7 @@
 - [Titles](#titles)
 - [Dynamic paths](#dynamic-paths)
 - [Localized paths](#localized-paths)
-- [Caching and cost](#caching-and-cost)
+- [Latency, caching and cost](#latency-caching-and-cost)
 
 ## Packages
 
@@ -522,12 +522,82 @@ the result:
 const { nodes } = await projectMap.getNodes({ compositionId, includeAncestors: true, expanded: true });
 ```
 
-## Caching and cost
+## Latency, caching and cost
 
 A trail costs one project map request plus one projected route request per linked ancestor —
 for a page four levels deep, three small route calls fired in parallel. The project map client
 talks to the management API, not the edge cache, so the tree request is the one worth caching;
-the route requests hit the edge and are cheap.
+the route requests hit the edge and are small.
+
+Small is not the same as free, and this is the part that bites. The requests sit *in front of
+the page*: the tree must resolve before any title can be asked for, and in the App Router the
+component doing the awaiting is one an author placed inside the composition, so the enclosing
+segment cannot flush until the whole chain finishes. A measured trail four levels deep looks
+like this on a cold cache:
+
+```
+1 project map (83ms) + 3 route get [111ms + 316ms + 313ms] wall 316ms · total ~400ms
+```
+
+The fan-out is working — wall time is the slowest title, not their sum — and the total is still
+most of half a second of nothing rendering. Two answers, in this order.
+
+### Caching is the default, not something you add
+
+`getRouteClient({ state })` and `getProjectMapClient({ state })` resolve to `force-cache` for
+every state except `CANVAS_DRAFT_STATE` and `CANVAS_EDITOR_STATE`, which get `no-cache`. So at
+published state Next's fetch cache holds these responses and a repeat request pays nothing.
+
+The consequence for anyone measuring: **a latency number is meaningless unless it says whether
+the cache was cold or warm.** A first hit, a fresh deployment, or a draft/preview request pays
+the full round trip; steady-state production traffic does not. Measure both before concluding
+the trail is slow.
+
+### The tree fetch is cached but cannot be invalidated by tag
+
+The two clients are not symmetric, and the skill used to imply they were:
+
+| Client | Cache | Tags |
+|---|---|---|
+| `getRouteClient` | `force-cache` at published state | `route`, plus `path:/...` for every cumulative prefix, lowercased |
+| `getProjectMapClient` | `force-cache` at published state | **none** — the fetch carries `next: { revalidate }` and no `tags` |
+
+So `revalidateTag('path:/products')` drops every cached *title* under `/products`, but nothing
+drops the cached *tree*. Project map edits reach the cache the other way: the SDK's webhook
+handler calls `revalidatePath` for the affected node paths. If you cache the tree yourself with
+a long TTL, an author moving a page will not be reflected until that TTL expires — budget the
+interval accordingly rather than assuming a tag will save you.
+
+### Stream what caching cannot cover
+
+A cold cache, the first visitor after a deploy, draft mode, preview, a release and in-context
+editing all pay the full cost, and no cache setting changes that. Since an author can place the
+trail on any page and the component cannot know which of those it is serving, **the boundary is
+not conditional** — give it one always, so the shell flushes immediately and the trail streams
+in when it resolves. On a warm request the subtree resolves and no fallback paints, so it costs
+nothing to have been wrong about needing it.
+
+The App Router SDK has this built in, and it lands exactly where this skill already tells you to
+put the component — the resolver. A `suspense` entry on the resolve result wraps that component
+instance in a boundary; see
+[uniform-nextjs-app-router](../../uniform-nextjs-app-router/references/advanced.md) for the
+mechanism. Nothing about the trail module or the component changes:
+
+```tsx
+// components/resolveComponent.ts
+if (component.type === 'breadcrumbs') {
+  return { component: Breadcrumbs, suspense: { fallback: BreadcrumbsFallback } };
+}
+```
+
+`fallback` is a **component, not an element** — the SDK calls `createElement` on it, so
+`fallback: <BreadcrumbsFallback />` is wrong and `fallback: BreadcrumbsFallback` is right.
+Which fallback to use is a rendering decision with a trap in it, and it is not "a skeleton":
+see [rendering.md](rendering.md#the-suspense-fallback).
+
+There is no equivalent in the Page Router. The trail is built in `getServerSideProps`, which
+runs before anything is sent, so it blocks the response outright — caching and the
+skip-when-absent rule below are the only levers there.
 
 - **Skip everything when nothing will render it.** Where the trail is built at the route level
   rather than inside the component — the Page Router shape above — every page pays for the
@@ -535,10 +605,9 @@ the route requests hit the edge and are cheap.
   breadcrumbs component type first and return `[]` when it is absent. This is the single largest
   saving available, and it is the reason to prefer building inside the component where the
   framework allows it.
-- **App Router:** use the factories. `getProjectMapClient({ state })` and `getRouteClient({
-  state })` let Next's fetch cache hold published responses and bypass it for draft and editor
-  state; the route client tags each fetch with `route` and `path:<segment>` for every prefix, so
-  `revalidateTag('path:/products')` drops every cached title under `/products`.
+- **App Router: use the factories rather than constructing clients**, and you get the caching
+  and tagging above for free. Constructing `RouteClient` yourself means no fetch cache and no
+  tags unless you wire them.
 - **Cache the tree fetch, not the trail.** `getNodes({ path, projectMapId })` is a pure function
   of the node path and the expensive part. The title fetches are a function of the *expanded*
   href, so the dynamic inputs are in their key by construction. Pass a caching `fetch` into
