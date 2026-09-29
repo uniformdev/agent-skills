@@ -251,63 +251,19 @@ Notes on reading particular fixtures:
 - **`timeout` is experiment-level, so the generic pair carries the maximum its fixtures need.** The
   navigation fixture is why that is 1800s: at a shorter ceiling both arms get truncated, which by
   the paired-arms rule voids the comparison rather than producing a 0%.
-
-### `nextjs-breadcrumbs` and `nextjs-page-router-breadcrumbs`
-
-The same task on both Next.js SDKs.
-
-- **One prompt for both.** `PROMPT.md` is byte-identical across the two fixtures and names no
-  API, package or technique. It describes the site: pages editors move, levels that are not
-  pages, URLs that vary. Nothing in it points at the project map, so these brownfield fixtures
-  can show lift rather than only guard against drift.
-- **Bare starter trees.** Each ships only the `page` component, its resolver or registration,
-  and the composition route. Each stages `uniform-breadcrumbs` together with its framework skill
-  (`uniform-nextjs-app-router` / `uniform-nextjs-page-router`), because the breadcrumbs skill
-  defers framework wiring to it and the plugin ships them together.
-- **The title field cannot be guessed.** `uniform-data/component/page.yaml` sets
-  `titleParameter: headline`. A guessed id is accepted by the Route API and returns nothing, so
-  the assertion reads the value out of the fixture and requires it as a quoted literal in the
-  trail modules. It does not look inside `only: [...]`, because the id legitimately reaches the
-  projection through an option.
-- **The render-blocking assertions are App Router only.** One requires a Suspense boundary (a
-  `suspense` entry on the `resolveComponent` result, or a `<Suspense>` in the component); the
-  other requires `fallback` to be a component, not an element. The Page Router has no boundary
-  to stream behind, so its suite omits both.
-- **Page Router assertions are scoped to the files the agent touched.** Its starter route
-  already contains `matchedRoute` and `getServerSideProps`, so those checks read o11y
-  `filesModified` and are paired with negatives on `asPath` / `resolvedUrl`. Two more cover
-  Page-Router-only failures: a registered component whose module nothing imports, and the
-  project map read from a `useEffect`.
-- **The judge criterion** covers what regex cannot: ancestor order, hrefs expanded from the
-  current request's dynamic inputs, a last crumb that is not a link, server-only access,
-  rendering nothing when the trail cannot be built, and titles from a Route API call on the
-  expanded path.
-
-Results, `runs: 1` per arm, `vercel-ai-gateway/claude-code` with `anthropic/claude-sonnet-4.6`
-and the judge pinned to the same model:
-
-| Fixture | Baseline (2026-09-22) | With skill (2026-09-29) |
-|---|---|---|
-| `nextjs-breadcrumbs` | 0% — 6 of 15 failed | **100%** — 17/17, 419s |
-| `nextjs-page-router-breadcrumbs` | 0% — 6 of 17 failed | **100%** — 17/17, 384s |
-
-The baseline was measured before the two App Router render-blocking assertions existed. Its
-project has no Suspense boundary, so it would fail the first of them too.
-
-What the baseline misses, on both SDKs and on every run measured — and what `SKILL.md` is
-limited to:
-
-- the component is never registered in the resolver
-- ancestor paths are never expanded with `Route` and the request's dynamic inputs
-- titles come from `node.name`, never from `RouteClient.get` with a `select` projection, so
-  the definition's title field is never read either
-- `releaseId` is never forwarded
-- the tree request has no `try/catch`, so an API failure takes the page down (judge)
-- no Suspense boundary (App Router)
-
-Unaided, it already reads the tree with `getNodes` + `includeAncestors`, keys it on the matched
-route, and writes accessible markup and `BreadcrumbList` JSON-LD. Those assertions stay as
-regression guards; the skill no longer teaches them.
+- **`nextjs-breadcrumbs` and `nextjs-page-router-breadcrumbs` are the same task on both Next.js
+  SDKs.** `PROMPT.md` is byte-identical across the two and names no API, so the pair can show lift
+  rather than only guard against drift. Each stages `uniform-breadcrumbs` with its framework
+  skill. `uniform-data/component/page.yaml` sets `titleParameter: headline`: the Route API accepts
+  a guessed id and returns nothing, so the assertion requires `"headline"` as a literal in the
+  trail modules — not inside `only: [...]`, where it can arrive through an option. The two
+  Suspense assertions are App Router only; the Page Router has no boundary to stream behind. Its
+  `matchedRoute` and `getServerSideProps` checks read o11y `filesModified`, because the starter
+  route already contains both. Without the skill, both SDKs fail titles from `RouteClient.get`
+  with a `select` projection, the title field read from the definition, `releaseId` forwarding,
+  and the judge on every run, and the App Router fails the Suspense assertion. Component
+  registration and `Route` expansion of ancestor paths fail on most runs. The other assertions
+  mostly pass unaided and stay as regression guards.
 
 ## Running in CI
 

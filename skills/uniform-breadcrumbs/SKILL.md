@@ -16,28 +16,6 @@ title, and renders the result.
 Project map fundamentals — nodes, dynamic inputs, route matching — are in the `uniform-sdk`
 skill ([references/routing.md](../uniform-sdk/references/routing.md)).
 
-## Rules for Building Breadcrumbs
-
-### 1. Traversal: Walk the Node Tree (Do Not Split URLs)
-Deriving breadcrumbs directly from `pathname.split('/')` fails in real-world scenarios. Always use the project map node tree.
-
-| URL Splitting (`pathname.split('/')`) | Node Tree Traversal |
-| :--- | :--- |
-| Generates `"Products"` from `/products` | Uses `node.name` (the author-defined label) |
-| Shows raw slug `'shoes'` for `/products/shoes` | Resolves dynamic category values properly |
-| Creates non-existent pages/links for URL segments | Ignores `placeholder` nodes without target pages |
-| Hardcodes/infers locale from URL (`/fr/...`) | Uses localized names (`node.locales["fr-FR"].name`) |
-| Strict URL sequence | Correct parent-child hierarchy regardless of URL structure |
-
----
-
-### 2. Client Responsibilities: Project Map vs. Route API
-
-* **`ProjectMapClient.getNodes`**: Returns the tree structure (node hierarchy, path templates, and page existence). It does **not** handle page content or dynamic composition.
-* **`RouteClient.get`** (with `select` projection): Resolves content for a specific path (e.g., `/en/products/shoes`). Handles locales, dynamic inputs, editions, and data bindings to return exact titles.
-
-> **Note:** Relying solely on the Project Map results in unrendered placeholder expressions like `${...}` or fallback locale titles. Always use the Route API to fetch dynamic and localized node titles.
-
 ## The five inputs
 
 Everything below is a pure function of these. Get them once, at the top of the component.
@@ -75,7 +53,6 @@ find them rather than assuming: [references/discovery.md](references/discovery.m
    releaseId, withComponentIDs: false, select: { fields: { only: [labelField] }, slots: { only:
    [] } } })` — and read that one parameter back. Fall back to
    `node.locales[locale]?.name ?? node.name`. Run the calls in parallel.
-5. **Do not fetch the current page.** You are already rendering it; its title is in props.
 
 ## What "done" means
 
@@ -87,9 +64,6 @@ find them rather than assuming: [references/discovery.md](references/discovery.m
   gives the node name. A trail with a single crumb renders nothing too. Never throw out of the
   component — it takes the whole page down over secondary navigation.
 - **The trail does not block the page** — see below.
-- **Markup and structured data** as in [references/rendering.md](references/rendering.md):
-  `<nav aria-label>`, `<ol>`, `aria-current="page"`, and `BreadcrumbList` JSON-LD built from the
-  same array the component renders.
 
 Working implementation: [references/building-the-trail.md](references/building-the-trail.md).
 
