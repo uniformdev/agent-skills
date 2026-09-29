@@ -63,7 +63,7 @@ scores means no boost is ever sent, which is safe.
 - `SearchSorting` exposes it as an author choice: **Behavior relevancy (Uniform Context)** in the
   sort editor writes the `$behavior` sentinel, which `buildOrderByQuery` maps to `'behavior'`.
 - `Recommendations` (server component) does the same from the `ufvd` cookie with a wildcard
-  query and no facets — see [components.md](components.md#recommendations).
+  query and no facets — see [components.md](components.md#recommendations-recommendations).
 
 **Guarantees and traps, all silent.**
 

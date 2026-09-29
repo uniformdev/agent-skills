@@ -37,8 +37,8 @@ is the fallback. To support the project's own content types, add a module export
 `source`, `type: string[]` and `Renderer`, and push it into `rendererModules`. Hit URLs come
 from `useUrlResolver()`, backed by the engine's `entryUrlMapping` and, for composition hits, a
 node-id → path map fetched from the search service's `/api/project-map` endpoint
-(`lib/search/projectMapClient.ts`) — an authenticated call; see the patch in
-[install.md](install.md#patch-the-project-map-client).
+(`lib/search/projectMapClient.ts`) — an authenticated call that sends the search key; a scaffold from
+CLI 0.0.6 omitted it, see [install.md](install.md#reconcile-the-scaffold).
 
 Click analytics: `@uniformdev/search ≥ 0.0.7` exposes `trackClick({ docId, locale })` on the
 client for the integration's "top clicked" report. The scaffolded `SearchList` (unchanged through
@@ -141,12 +141,6 @@ item's fields (`title`, `description`, `imageUrl`, `url`, plus `price`/`currency
 `category`/`author`/`publishedDate`). The platform expands the loop during data resolution;
 the components only render children. Use this for editorially curated or query-driven lists
 that should be cached with the page; use `Recommendations` when the list must be per-visitor.
-
-### Click tracking
-
-`SearchList` wraps each hit in a capture-phase `onClickCapture` calling
-`trackClick({ docId, locale })` (present in `@uniformdev/search` 0.0.7) for the integration's
-"top clicked" report. Fire-and-forget; never blocks navigation.
 
 ### Retrieval and behavior ranking
 
