@@ -13,6 +13,10 @@ Uniform ships typed packages and runnable examples; both are authoritative in a 
 
 When 1 and 3 disagree, 1 wins and the disagreement is worth writing into the skill.
 
+**Types give the shape, not the behaviour.** A claim about what code *does* — caching, a shared
+concurrency limit, what an API response contains, what a factory returns on each call — needs
+the implementation: the published package's compiled `dist/*.js`.
+
 ## Reading a package you do not have installed
 
 ```bash
@@ -61,9 +65,7 @@ Kept as evidence that the step is not ceremony:
 | The old edgehancer testing example | Fabricated — wrong argument shape, wrong return shape |
 | `@uniformdev/mesh-auth` is a package | 404 on npm. It is an example directory; the helpers ship as `@uniformdev/mesh-sdk/server` |
 | A component enumeration via `declare const` | Misses every `declare function` component |
-
-Three of those were errors in *this* repo's own skills, and two were mine while writing the fix.
-Assume your first draft has one.
+| `getProjectMapClient` / `getRouteClient` "share a concurrency limit" | Each call constructs a new client with its own `limit: 6` policy — visible in `@uniformdev/next-app-router`'s `dist`, silent in its types |
 
 ## Test the recipes you write
 

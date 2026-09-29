@@ -2,13 +2,17 @@
 
 ## Contents
 
-- [SKILL.md template](#skillmd-template)
-- [Frontmatter fields](#frontmatter-fields)
-- [Description writing guide](#description-writing-guide)
-- [Directory structure conventions](#directory-structure-conventions)
-- [Writing style](#writing-style)
-- [SKILL.md sections (in order)](#skillmd-sections-in-order)
-- [Checklist](#checklist)
+- [Skill template and checklist](#skill-template-and-checklist)
+  - [Contents](#contents)
+  - [SKILL.md template](#skillmd-template)
+  - [Frontmatter fields](#frontmatter-fields)
+  - [Description writing guide](#description-writing-guide)
+  - [Directory structure conventions](#directory-structure-conventions)
+    - [Reference file conventions](#reference-file-conventions)
+    - [Common reference file topics (framework skills)](#common-reference-file-topics-framework-skills)
+  - [Writing style](#writing-style)
+  - [SKILL.md sections (in order)](#skillmd-sections-in-order)
+  - [Checklist](#checklist)
 
 ## SKILL.md template
 
@@ -31,6 +35,11 @@ metadata:
 ## <Key concept or section>
 
 <Concise overview. Detailed content belongs in references/.>
+
+## Flow
+
+1. **<Discover — including what to ask the user>.** <One or two lines; details in a reference.>
+2. **<Step>.** …
 
 ## Resources
 
@@ -55,19 +64,16 @@ The description drives skill discovery. The agent reads all descriptions at star
 
 **Pattern:** `<Verb phrase describing capabilities>. Use when <trigger scenarios>.`
 
-**Examples from this repo:**
-
-| Skill | Description |
-|-------|-------------|
-| uniform-best-practices | Core Uniform CMS concepts, conventions, naming standards, and MCP tool usage. Use when working with Uniform compositions, components, entries, patterns, content types, assets, or localization. |
-| uniform-sdk | Uniform SDK developer reference covering authentication, CLI configuration, routing, and data syncing. Use when setting up Uniform in a frontend project, configuring the CLI, or working with the Route API. |
-| uniform-mesh | Uniform Mesh integration development covering custom data connectors, parameter editors, asset library extensions, and dashboard tools. Use when building a custom Mesh integration that extends the Uniform UI. |
+**Examples:** read the current ones rather than copying a list that goes stale —
+`sed -n 3p skills/*/SKILL.md`, or the generated skill table in the root `README.md`.
+`uniform-navigation` and `uniform-automations` are good models: capabilities first, then
+"Use when …" with the phrasings a user would actually type.
 
 ## Directory structure conventions
 
 ```text
 skills/uniform-<topic>/
-├── SKILL.md                    # Required, under 500 lines
+├── SKILL.md                    # Required, under 500 lines — aim for ~150
 └── references/                 # One focused topic per file
     ├── setup.md                # Installation and configuration
     ├── components.md           # Component mapping and rendering
@@ -108,7 +114,12 @@ skills/uniform-<topic>/
 1. **Title** (H1) — skill name in sentence case
 2. **Overview** — 1–2 sentences, what and why
 3. **Key concepts / sections** — concise overview of the domain
-4. **Resources** — links to each reference file with one-line descriptions
+4. **Flow** - step by step workflow
+5. **Resources** — links to each reference file with one-line descriptions
+
+This order is a starting point, not a review gate. A skill that uses a different structure is
+fine when the structure fits its job and the content holds up; review the content, not the
+headings.
 
 **No "When to apply" section.** The `description` frontmatter is what decides whether the skill
 loads; by the time the body is in context the question is already answered, so a trigger list in
@@ -131,5 +142,14 @@ Before submitting a new skill, verify:
       (the old `validate:<topic>` convention was removed when the validator started globbing)
 - [ ] `npm run build:plugins` run if a description changed (it regenerates the README inventory),
       and `npm run validate:plugins` clean
-- [ ] Every factual claim checked against the shipped package or an example, not memory
+- [ ] Every factual claim checked against the shipped package or an example, not memory —
+      behaviour claims against the implementation, not only the types
 - [ ] Any command the skill tells the agent to run has been executed and its output matches
+- [ ] Every relative link and `#anchor` resolves — in SKILL.md, the references, and any
+      `EVAL.ts` failure message that points at a heading
+- [ ] No rule stated in more than one place; after changing a claim, grep for every copy
+- [ ] No version history — only the latest release, plus "requires ≥ X" where it matters
+- [ ] Every pipeline step and trap names a concrete failure it prevents
+- [ ] Design choices are asked of the user with a recommended default, not decided silently
+- [ ] Pull request carries the per-arm and per-assertion tables, regenerated from the final run
+      ([evals-and-rework.md](evals-and-rework.md#the-pull-request))
