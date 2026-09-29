@@ -119,7 +119,8 @@ npx uniform component get page 2>/dev/null | grep -i titleParameter
 A misspelled id is a silent no-op — the projection returns no parameters and every crumb
 silently falls back to its node name — so this step is not optional. If several page types have
 different title parameters, note all of them; the trail module accepts a list. If you cannot ask
-the user, use `titleParameter`.
+the user, use the `titleParameter` value you read here — not `title`, and not a placeholder with
+a comment telling someone to look it up.
 
 ## 6. Is the project map localized, and how?
 

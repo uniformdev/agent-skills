@@ -34,10 +34,11 @@ find them rather than assuming: [references/discovery.md](references/discovery.m
 ## The pipeline
 
 1. **Ask the user what the trail should show.** Before writing code, confirm:
-   - **Which field labels a crumb.** Offer the page component definition's `titleParameter` as
-     the default — read it from the definition, do not assume `title`
-     ([discovery](references/discovery.md#5-which-field-labels-a-crumb)). Some projects keep a
-     shorter dedicated field for navigation.
+   - **Which field labels a crumb.** Default: the value of `titleParameter` in the page
+     component's definition. Look it up before writing code — in the synced definition files, or
+     with the CLI ([discovery](references/discovery.md#5-which-field-labels-a-crumb)). Do not
+     assume `title`, and do not leave a placeholder id for someone to check later. Some projects
+     keep a shorter dedicated field for navigation.
    - **Which levels are links.** Default: grouping (`placeholder`) nodes, and pages not published
      at the current state, render as plain text.
    - **Whether the trail starts with a home crumb.** Default: yes.
