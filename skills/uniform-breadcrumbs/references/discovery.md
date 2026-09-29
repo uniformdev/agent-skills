@@ -32,11 +32,6 @@ grep '"version"' node_modules/@uniformdev/canvas/package.json
 Every `@uniformdev/*` package in a project must resolve to the same version. If
 `@uniformdev/project-map` is absent, install it at the version the others are already on.
 
-**`RouteClient.get` needs `@uniformdev/canvas` 20.74.7 or later.** Below that the class has only
-`getRoute`, which takes the same options and the same `select` projection — projections have been
-on the route call since 20.72.3. So an older project does not have to bump to project a title;
-it has to call the other method. Read which one is there (step 3) rather than assuming.
-
 ## 3. What do the installed packages actually export?
 
 Do not write these signatures from memory or from a docs page — read them from the package that
@@ -47,8 +42,7 @@ will be compiled:
 grep -n "declare class RouteClient\|^type Projection = \|^type ProjectionSpec" \
   node_modules/@uniformdev/canvas/dist/index.d.ts
 
-# which method this copy has — `get` plus a deprecated `getRoute`, or `getRoute` alone.
-# Either way it takes `select`; write against whichever one is there.
+# the route client's methods and the options they take
 awk '/^declare class RouteClient/,/^}/' node_modules/@uniformdev/canvas/dist/index.d.ts
 
 # what a projection can say
@@ -106,10 +100,11 @@ Framework SDK mechanics — where that context comes from, and which clients are
 are in [uniform-nextjs-app-router](../../uniform-nextjs-app-router/SKILL.md) and
 [uniform-nextjs-page-router](../../uniform-nextjs-page-router/SKILL.md).
 
-## 5. Which parameter is the page's title?
+## 5. Which field labels a crumb?
 
-The Route API call projects one field, and it has to be the right one. The page component's
-definition names it as `titleParameter`. Read it; do not assume `title` or `pageTitle`:
+Ask the user. The label is a product decision: most projects use the page title, some keep a
+shorter field just for navigation. Offer the page component's title parameter as the default —
+its definition names it as `titleParameter`. Read it; do not assume `title` or `pageTitle`:
 
 ```bash
 # synced component definitions, whatever folder the project keeps them in — every component
@@ -123,7 +118,8 @@ npx uniform component get page 2>/dev/null | grep -i titleParameter
 
 A misspelled id is a silent no-op — the projection returns no parameters and every crumb
 silently falls back to its node name — so this step is not optional. If several page types have
-different title parameters, note all of them; the trail module accepts a list.
+different title parameters, note all of them; the trail module accepts a list. If you cannot ask
+the user, use `titleParameter`.
 
 ## 6. Is the project map localized, and how?
 
@@ -144,8 +140,7 @@ If neither appears, the project map is single-locale and `locale` stays `undefin
 |---|---|
 | Breadcrumbs already exist | Replace the data source, keep the markup and the component's public id |
 | `@uniformdev/project-map` missing | Add it at the version the other `@uniformdev/*` packages use |
-| `@uniformdev/canvas` below 20.74.7 | `.get` is not there yet — call `getRoute` with the same `select`, or bump every `@uniformdev/*` package together |
-| `titleParameter` found | Pass it to the trail; several page types → pass the list |
+| Label field chosen (default: `titleParameter`) | Pass it to the trail's `titleParameter` option; several page types → pass the list |
 | No locale segments anywhere | Skip `expanded: true` locale handling; pass no `locale` |
 | A `:locale` dynamic node | Pass the locale through `dynamicInputs`; the Route API reads it from the path |
 | Locale path segments on nodes | `expanded: true`, `getNodeLocalePath`, and pass `locale` to the Route API explicitly |

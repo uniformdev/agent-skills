@@ -21,10 +21,7 @@ Two packages, two jobs:
 
 Both are dependencies of the framework SDKs, so check before adding either — and if you do add
 one, pin it to the version every other `@uniformdev/*` package in the project already resolves
-to. The module below calls `RouteClient.get`, which needs `@uniformdev/canvas` **20.74.7 or
-later**; the `select` projection itself has been on the route call since 20.72.3, as
-`getRoute({ ..., select })`. Confirm which method the installed copy has before writing against
-it: [discovery.md](discovery.md).
+to: [discovery.md](discovery.md).
 
 ## The trail module
 
@@ -68,8 +65,8 @@ export type TrailOptions = {
   /** Release being previewed. Without it, an editor previewing a release sees base titles. */
   releaseId?: string;
   /**
-   * Parameter id(s) the page component uses as its title — the component definition's
-   * `titleParameter`. Several when the project has several page types.
+   * Parameter id(s) that label a crumb — the field the user chose, by default the page
+   * component definition's `titleParameter`. Several when the project has several page types.
    */
   titleParameter: string | string[];
   /** Title of the page being rendered. It is already in your props; it is never fetched. */
@@ -79,9 +76,6 @@ export type TrailOptions = {
   /** Only needed when the project has more than one project map. */
   projectMapId?: string;
 };
-
-const segmentsOf = (path: string) => path.split('/').filter(Boolean);
-const hasToken = (path: string) => segmentsOf(path).some((segment) => segment.startsWith(':'));
 
 export async function getBreadcrumbTrail(
   { projectMap, route }: TrailClients,
@@ -98,22 +92,13 @@ export async function getBreadcrumbTrail(
     projectMapId,
   }: TrailOptions
 ): Promise<Crumb[]> {
-  // No project map context: pattern preview, playground, composition-by-id. Every SDK
-  // signals it differently — a sentinel string, a composition id — so test for a path.
+  // Playground and by-id renders hand you "composition" or a composition id, not a path.
+  // Skip the request rather than send one that cannot match.
   if (!nodePath.startsWith('/')) return [];
 
-  // The tree, and only the tree. No withCompositionData: it returns identity metadata, never
-  // resolved content — no parameters, no dynamic inputs, no data resources.
-  const nodes = await fetchChain(projectMap, nodePath, projectMapId);
-  if (!nodes.length) return [];
-
-  const target = segmentsOf(nodePath);
-  const chain = nodes
-    .filter((node) => {
-      const segments = segmentsOf(node.path);
-      return segments.length <= target.length && segments.every((s, i) => s === target[i]);
-    })
-    .sort((a, b) => segmentsOf(a.path).length - segmentsOf(b.path).length);
+  // The tree, and only the tree: the node and its ancestors, sorted by path, root first.
+  const chain = await fetchChain(projectMap, nodePath, projectMapId);
+  if (!chain.length) return [];
 
   const titleFields = Array.isArray(titleParameter) ? titleParameter : [titleParameter];
   const lastIndex = chain.length - 1;
@@ -131,7 +116,7 @@ export async function getBreadcrumbTrail(
       // The current page is already rendered. Its title is in props, never in a fetch.
       if (isCurrent) return { id: node.id, title: currentTitle ?? nodeName, isCurrent };
 
-      // Placeholder, or a template this request cannot expand: a level with no link.
+      // Placeholder: a grouping level with no page behind it, so no link.
       const href = hrefFor(node, dynamicInputs, locale);
       if (!href) return { id: node.id, title: nodeName, isCurrent };
 
@@ -186,13 +171,12 @@ function hrefFor(
   // A placeholder node is a grouping level with no composition behind it.
   if (node.type !== 'composition' || !node.compositionId) return undefined;
 
-  const href = new Route(getNodeLocalePath(node, locale)).expand({
+  // An ancestor's ":tokens" are a subset of the current route's, so this request's dynamic
+  // inputs fill every one of them.
+  return new Route(getNodeLocalePath(node, locale)).expand({
     dynamicInputValues: dynamicInputs,
     allowedQueryParams: node.data?.queryStrings?.map((qs) => qs.name),
   });
-
-  // expand() leaves unmatched ":tokens" in place instead of failing.
-  return hasToken(href) ? undefined : href;
 }
 
 type ResolvePageOptions = {
@@ -249,10 +233,8 @@ navigation. Both requests are guarded inside the module (`fetchChain` for the tr
 `resolvePage` for each title), so a caller does not need a `try/catch` and a copied sample
 cannot forget one. Keep it that way when you extend it.
 
-Why the filter and the sort in step 3: `includeAncestors` is documented to sort by path and the
-`depth: 0` query is not supposed to return descendants, but both are properties of the response
-rather than of your data. A segment-prefix filter makes a stray descendant impossible to render
-as a crumb, and sorting by depth makes the order yours.
+Why there is no sorting or filtering: `includeAncestors` is documented to return results sorted by
+path, and `depth: 0` returns no descendants, so the response already is the chain, root first.
 
 Why the Route API and not the composition API for the title: `RouteClient.get` is the only read
 that takes a *path* — so it matches the dynamic node, extracts the dynamic inputs from the path
@@ -458,7 +440,7 @@ already fixes this when the page's title parameter is bound to the dynamic input
 — or the design wants the slug itself — the value is in `dynamicInputs`, no fetch needed:
 
 ```ts
-const segment = segmentsOf(node.path).at(-1);
+const segment = node.path.split('/').at(-1);
 const slug = segment?.startsWith(':') ? dynamicInputs[segment.slice(1)] : undefined;
 ```
 
@@ -477,7 +459,7 @@ new Route('/products/:category/:sku').expand({
 }); // "/products/shoes/a%20b%2Fc"
 ```
 
-Its failure mode is silent, and it is the single most common breadcrumb bug:
+A missing value does not fail — the `:token` stays in place:
 
 ```ts
 new Route('/products/:category/:sku').expand({ dynamicInputValues: { category: 'shoes' } });
@@ -486,10 +468,10 @@ new Route('/products/:category/:sku').expand();
 // "/products/:category/:sku"
 ```
 
-An ancestor can be dynamic while the current page supplies no value for it, so this is not a
-theoretical case. `hrefFor` above rejects any expansion with a surviving `:` segment, which
-turns a broken link into an unlinked crumb — and also keeps the template out of the Route API,
-where `get({ path: '/products/:category' })` is simply `notFound`.
+In a trail that only happens when the dynamic inputs are not passed through. An ancestor's path
+is a prefix of the current node's, so its tokens are a subset of the current route's, and the
+request's own `dynamicInputs` fill every one. Pass them from the route as they are; do not
+rebuild them from the URL.
 
 ## Localized paths
 

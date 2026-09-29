@@ -59,9 +59,10 @@ home page produces `/home` and leaves the root unlinkable.
 `type: "placeholder"` means a grouping level: it organizes the tree and owns a path segment, but
 no composition renders there.
 
-**Render it as text, keep it in the list.** The level is real — dropping it makes the trail claim
-a parent-child relationship that does not exist. `hrefFor` already returns `undefined` for
-these, so the component handles it.
+**Default: render it as text, keep it in the list** — unless the user chose otherwise when asked
+which levels are links. The level is real — dropping it makes the trail claim a parent-child
+relationship that does not exist. `hrefFor` already returns `undefined` for these, so the
+component handles it.
 
 **But drop it from the `BreadcrumbList`.** Structured data is the one place a placeholder cannot
 survive: `item` is required on every entry except the last, a grouping level has no URL to put
@@ -81,8 +82,8 @@ has never gone live, and linking it ships a 404.
 
 The Route API is the authority here, and the trail module already asks it. With `state:
 CANVAS_PUBLISHED_STATE`, a route whose composition has no published version resolves to
-`type: 'notFound'`, and `resolvePage` returns `undefined` — the crumb keeps its level and its
-node name and loses its link. Pass `state` through from the page so preview shows draft
+`type: 'notFound'`, and `resolvePage` returns `undefined` — by default the crumb keeps its level
+and its node name and loses its link. Pass `state` through from the page so preview shows draft
 ancestors linked and production does not.
 
 Do not reach for `withCompositionData` to answer this question. It reports whether a composition

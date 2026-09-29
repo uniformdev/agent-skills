@@ -359,18 +359,17 @@ test('the trail is correct, safe, and built on the server', async () => {
     'This is a breadcrumbs component for a Uniform CMS site in a Next.js **Page Router** ' +
       'project (@uniformdev/canvas-next + @uniformdev/canvas-react, components registered with ' +
       'registerUniformComponent), built from the project map node hierarchy. Verify that: ' +
-      "(1) the crumbs are the current page's ancestors in node order from the root down, " +
-      'filtered to that ancestor chain — not siblings, not descendants, and not derived from ' +
-      'segments of the request URL; ' +
-      '(2) an ancestor whose path template still contains an unresolved ":token" after ' +
-      'expansion is rendered as text rather than as a link, so no href like ' +
-      '"/products/:category" can ever reach the page; ' +
+      "(1) the crumbs are the current page's ancestors in node order from the root down — " +
+      'not siblings, not descendants, and not derived from segments of the request URL; ' +
+      "(2) every linked ancestor's href is its path template expanded with the current " +
+      "request's dynamic input values, so no href like \"/products/:category\" can ever " +
+      'reach the page; ' +
       '(3) the last crumb represents the current page and is not a link; ' +
       '(4) the project map is only ever read on the server — the trail is built in ' +
       'getServerSideProps (or getStaticProps) and passed down as props, and no module that ' +
       'runs in the browser constructs a Uniform client or reads UNIFORM_API_KEY; ' +
-      '(5) a trail that cannot be built — no project map context, an API failure, or a single ' +
-      'crumb because the page is at or just below the root — results in nothing being ' +
+      '(5) a trail that cannot be built — an API failure, or a single crumb because the page ' +
+      'is at or just below the root — results in nothing being ' +
       'rendered, rather than a thrown error or a placeholder message in production markup; and ' +
       '(6) the title of each linked ancestor is read from a Route API call (RouteClient.get) ' +
       'made with that ancestor\'s expanded, concrete path and a `select` projection limited to ' +

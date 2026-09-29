@@ -9,39 +9,34 @@ metadata:
 
 # Breadcrumbs from the Uniform project map
 
-How to build a breadcrumb trail whose source of truth is the project map node tree, not the
-request URL. Uniform already stores the hierarchy, the author-facing label for every level, and
-the path template for every level — a breadcrumb component's whole job is to read that tree,
-ask the Route API for each page's title, and render it.
+The project map already stores the page hierarchy, a label for every level, and every level's
+path template. A breadcrumb component reads that tree, asks the Route API for each ancestor's
+title, and renders the result.
 
 Project map fundamentals — nodes, dynamic inputs, route matching — are in the `uniform-sdk`
 skill ([references/routing.md](../uniform-sdk/references/routing.md)).
 
-## The two rules everything else follows
+## Rules for Building Breadcrumbs
 
-**Walk the node tree. Never split the URL.** Deriving crumbs from `pathname.split('/')` looks
-equivalent on a demo site and is wrong on every real one:
+### 1. Traversal: Walk the Node Tree (Do Not Split URLs)
+Deriving breadcrumbs directly from `pathname.split('/')` fails in real-world scenarios. Always use the project map node tree.
 
-| URL-splitting produces | The node tree has |
-|---|---|
-| `products` → `"Products"` (title-cased slug) | `node.name` — the label the author typed |
-| `shoes` on `/products/shoes` | a dynamic node `/products/:category`; the crumb text is a *value*, not a segment |
-| a link for every segment | `type: "placeholder"` nodes that are grouping levels with no page behind them |
-| `/fr/produits` → `"Produits"` | `node.locales["fr-FR"].name`, authored per locale |
-| whatever order the URL happens to be in | ancestors ordered by depth, gaps and all |
+| URL Splitting (`pathname.split('/')`) | Node Tree Traversal |
+| :--- | :--- |
+| Generates `"Products"` from `/products` | Uses `node.name` (the author-defined label) |
+| Shows raw slug `'shoes'` for `/products/shoes` | Resolves dynamic category values properly |
+| Creates non-existent pages/links for URL segments | Ignores `placeholder` nodes without target pages |
+| Hardcodes/infers locale from URL (`/fr/...`) | Uses localized names (`node.locales["fr-FR"].name`) |
+| Strict URL sequence | Correct parent-child hierarchy regardless of URL structure |
 
-**The project map client gives you the tree. The Route API gives you the titles.** The two
-clients answer different questions and only one of them resolves content:
+---
 
-| Question | Client | Why |
-|---|---|---|
-| Which nodes are above this one, what are they called, what are their path templates, do they have a page? | `ProjectMapClient.getNodes` | It is the tree. It knows nothing about what a composition *says* |
-| What is the title of the page at `/en/products/shoes`, in this locale, in this release, with its dynamic inputs applied? | `RouteClient.get` with a `select` projection | Only the Route API resolves locale, editions, dynamic inputs, dynamic tokens and data-bound parameters — and the projection trims the answer to one field |
+### 2. Client Responsibilities: Project Map vs. Route API
 
-A trail built from the project map alone works in a demo and breaks on the first real
-project: titles bound to a dynamic input arrive as the raw `${...}` expression, the title an
-edition actually publishes never shows, and a localized title is the default locale's. See the
-trap list.
+* **`ProjectMapClient.getNodes`**: Returns the tree structure (node hierarchy, path templates, and page existence). It does **not** handle page content or dynamic composition.
+* **`RouteClient.get`** (with `select` projection): Resolves content for a specific path (e.g., `/en/products/shoes`). Handles locales, dynamic inputs, editions, and data bindings to return exact titles.
+
+> **Note:** Relying solely on the Project Map results in unrendered placeholder expressions like `${...}` or fallback locale titles. Always use the Route API to fetch dynamic and localized node titles.
 
 ## The five inputs
 
@@ -53,200 +48,98 @@ Everything below is a pure function of these. Get them once, at the top of the c
 | `dynamicInputs` | Values captured from the URL, e.g. `{ category: "shoes" }` (a `:locale` node's value arrives here too) |
 | `locale` | The locale the route resolved with, if the project is localized |
 | `state` | `CANVAS_PUBLISHED_STATE` (64) or `CANVAS_DRAFT_STATE` (0) |
-| `releaseId` | The release being previewed, or `undefined`. Without it an editor previewing a release sees base titles |
+| `releaseId` | The release being previewed, or `undefined` |
 
 Every SDK that resolves a route carries all five. Which object holds them differs per SDK —
 find them rather than assuming: [references/discovery.md](references/discovery.md).
 
 ## The pipeline
 
-1. **Bail if there is no project map context.** A composition rendered by ID — pattern preview,
-   playground, contextual editing of an unattached composition — has no ancestors, and the SDK
-   hands you a sentinel rather than a path. Reject any `nodePath` that does not start with `/`.
-2. **One tree request.** `ProjectMapClient.getNodes({ path, includeAncestors: true, depth: 0,
-   expanded: true })` returns the node and its ancestors, with localized paths. Do not fetch level
-   by level, and do not add `withCompositionData` — it is metadata, not content.
-3. **Filter to the chain and order by depth.** Keep only nodes whose path segments are a prefix
-   of the current node's, then sort by segment count. Never trust response order.
-4. **Expand each path** with `new Route(getNodeLocalePath(node, locale)).expand({
-   dynamicInputValues })`. A placeholder node, or a path with a `:token` still in it, gets no href.
-5. **Title each linked ancestor through the Route API** — `routeClient.get({ path: href, state,
-   releaseId, withComponentIDs: false, select: { fields: { only: [titleParameter] }, slots: {
-   only: [] } } })` — and read the one parameter back. Fall back to
-   `node.locales[locale].name ?? node.name` when the route is not a composition or the parameter
-   is empty. Run these in parallel; the chain is short.
-6. **Never fetch the current page.** You are rendering that composition; its title is in props.
+1. **Ask the user what the trail should show.** Before writing code, confirm:
+   - **Which field labels a crumb.** Offer the page component definition's `titleParameter` as
+     the default — read it from the definition, do not assume `title`
+     ([discovery](references/discovery.md#5-which-field-labels-a-crumb)). Some projects keep a
+     shorter dedicated field for navigation.
+   - **Which levels are links.** Default: grouping (`placeholder`) nodes, and pages not published
+     at the current state, render as plain text.
+   - **Whether the trail starts with a home crumb.** Default: yes.
 
-That produces the data. Shipping it is the other half.
+   If you cannot ask — a non-interactive run — use the defaults and say so in your summary.
+2. **One tree request.** `ProjectMapClient.getNodes({ path: nodePath, includeAncestors: true,
+   depth: 0, expanded: true })` returns the current node and its ancestors, root first — the API
+   sorts them by path. Do not fetch level by level.
+3. **Expand each ancestor path** with `new Route(getNodeLocalePath(node, locale)).expand({
+   dynamicInputValues: dynamicInputs })`. An ancestor's `:tokens` are a subset of the current
+   route's, so the current request's dynamic inputs always fill them.
+4. **Title each linked ancestor through the Route API** — `routeClient.get({ path: href, state,
+   releaseId, withComponentIDs: false, select: { fields: { only: [labelField] }, slots: { only:
+   [] } } })` — and read that one parameter back. Fall back to
+   `node.locales[locale]?.name ?? node.name`. Run the calls in parallel.
+5. **Do not fetch the current page.** You are already rendering it; its title is in props.
 
 ## What "done" means
 
-All six, or the feature is half-built. Each one is the part someone reliably drops:
-
-- **Its own component, registered in the project's component resolver** — the same way every
-  other component type there is registered. Building the trail inside the page component works
-  and is the wrong shape: it pins breadcrumbs to one position on every page, and an author who
-  wants them below the hero, or gone from landing pages, has to ask a developer.
-- **Accessible markup** — `<nav aria-label>`, `<ol>`, `aria-current="page"` on the last crumb,
-  separators kept out of the accessibility tree.
-- **`BreadcrumbList` JSON-LD, from the same array the component renders.** Not optional and not
-  a nice-to-have: rich-result eligibility is most of why a site has breadcrumbs at all, and a
-  trail whose structured data disagrees with what is on screen is worse than none.
-- **Nothing rendered when the trail is unbuildable** — no project map context, an API failure,
-  or a single crumb. Never a thrown error, never a placeholder message in production markup.
-  Every network call the trail makes is wrapped in a `try/catch` that logs and degrades — the
-  tree fetch to an empty trail, a title fetch to the node name — inside the trail module, so
-  no caller can forget it. This is also why a Suspense fallback here is not free: it renders
-  before anyone knows the trail is empty. See the streaming rule below.
-- **The trail does not block the page.** Its requests sit in front of the render, and on a cold
-  cache that is most of half a second of nothing. Cache first; give the component a Suspense
-  boundary for the states caching cannot reach.
-- **Server-side only.** Both clients carry `UNIFORM_API_KEY`, and `@uniformdev/project-map` has
-  no `server-only` guard.
+- **Its own component, registered in the project's component resolver**, the same way as every
+  other component type there. Built into the page component, the trail is pinned to one spot on
+  every page, and an author cannot move it or leave it out.
+- **Nothing rendered when the trail cannot be built.** Wrap every request in a `try/catch`
+  inside the trail module: a failed tree request gives an empty trail, a failed title request
+  gives the node name. A trail with a single crumb renders nothing too. Never throw out of the
+  component — it takes the whole page down over secondary navigation.
+- **The trail does not block the page** — see below.
+- **Markup and structured data** as in [references/rendering.md](references/rendering.md):
+  `<nav aria-label>`, `<ol>`, `aria-current="page"`, and `BreadcrumbList` JSON-LD built from the
+  same array the component renders.
 
 Working implementation: [references/building-the-trail.md](references/building-the-trail.md).
 
-## Decision rules
+## Do not block the page
 
-**Which name to show.** Three sources, in this order:
+The trail waits on one tree request plus one title request per linked ancestor. Caching only
+helps repeat traffic: a cold cache, draft, preview, a release and in-context editing all pay the
+full round trip, and an author can place the component on any page.
 
-| Source | Use it when |
-|---|---|
-| The composition's title parameter, via `RouteClient.get` on the **expanded** path with `select: { fields: { only: [titleParameter] }, slots: { only: [] } }` | **Default for every linked ancestor.** It is what the page itself shows in its `<title>`, resolved for locale, edition and dynamic inputs, and the projection makes the response a few hundred bytes |
-| `node.locales[locale].name` | Fallback when the project map is localized (`expanded: true` required) and the route did not yield a title |
-| `node.name` | Fallback everywhere else, and the only choice for a `placeholder` node — it has no composition to ask |
-
-`titleParameter` is the id of the parameter the page component uses as its title — read it from
-the component definition's `titleParameter` field, do not guess. If the project has several page
-types with different title parameters, project all of them (`only: ['pageTitle', 'title']`) and
-take the first non-empty value.
-
-**Whether to link a crumb.**
-
-| Node | Link |
-|---|---|
-| `type: "placeholder"` | **No.** A grouping level with no composition — render text, keep the level visible |
-| `type: "composition"` with a dynamic path you can expand | Yes |
-| `type: "composition"` whose expanded path still contains `:` | **No.** You would ship `/products/:category` as an href |
-| `type: "composition"` whose Route API result is `notFound` at published state | **No.** The node exists; the page has never been published |
-| The current page (last crumb) | **No.** `aria-current="page"`, not an anchor |
-
-**Give it a Suspense boundary. Always.** The trail's requests run before the page can render,
-so the question is never "is this fast" but "is the page waiting". Caching answers that for
-repeat traffic and nothing else: a cold cache, the first visitor after a deploy, draft, preview,
-a release and in-context editing all pay the full round trip, and an author can place this
-component on any page. You cannot know from inside the component that the cache will be warm.
-
-The boundary costs nothing when it is: the data is already there, the subtree resolves, no
-fallback paints. It is the case where it is *not* warm that decides, and that case always
-exists.
-
-Declare it where you already register the component — `resolveComponent` takes a `suspense`
-entry, so neither the trail module nor the component changes:
+**App Router: always give it a Suspense boundary.** When the data is already cached the boundary
+costs nothing. Declare it where the component is registered — `resolveComponent` takes a
+`suspense` entry, so neither the trail module nor the component changes:
 
 ```tsx
 return { component: Breadcrumbs, suspense: { fallback: BreadcrumbsFallback } };
 ```
 
-`fallback` is a component, not an element. **And do not reach for a skeleton by reflex:** this
-component renders nothing on pages with no trail, and a skeleton in front of those flashes and
-then disappears, shifting the top of the page twice. Choosing it is the real decision —
-[references/rendering.md](references/rendering.md#the-suspense-fallback) has the rule.
+`fallback` is a component, not an element — the SDK calls `createElement()` on it. Do not reach
+for a skeleton by reflex: this component renders nothing on pages with no trail, and a skeleton
+there flashes and then disappears. The rule for choosing one is in
+[references/rendering.md](references/rendering.md#the-suspense-fallback).
 
-**Server only.** Both clients authenticate with `UNIFORM_API_KEY`. Build the trail in a server
-component, loader, or `getServerSideProps`. Unlike the framework SDK's client helpers,
-`@uniformdev/project-map` carries no `server-only` guard — importing it into a client component
-compiles cleanly and ships the key to the browser.
-
-**Never construct a Uniform client at the top level of a Page Router page module.** A page file
-is a client module; only what Next's `getServerSideProps` transform eliminates stays out of the
-browser bundle, and that is not something a reviewer can verify by reading the file. Put the
-clients behind a lazy accessor in their own module and call it from inside the handler. The App
-Router's `getProjectMapClient` / `getRouteClient` already import `server-only`, so there the
-factories are the answer.
+**Page Router: cache, and skip the work on pages that will not render the trail.**
+`getServerSideProps` runs before any byte is sent, so there is no boundary to stream behind.
 
 ## Framework specifics
 
-Where the five inputs live, whether the trail is built in a server component or a loader, and
-how the SDK's own clients cache are in the framework skills:
-
 - **Next.js App Router** — [uniform-nextjs-app-router](../uniform-nextjs-app-router/SKILL.md),
-  whose `references/advanced.md` covers `getProjectMapClient` and `getRouteClient`. Prefer them
-  over constructing the clients yourself: they read the environment, switch off caching for
-  draft and editor state, and tag route fetches by path.
+  whose `references/advanced.md` covers `getProjectMapClient` and `getRouteClient`. Use them
+  rather than constructing the clients yourself: they read the environment, switch off caching
+  for draft and editor state, and tag route fetches by path.
 - **Next.js Page Router** — [uniform-nextjs-page-router](../uniform-nextjs-page-router/SKILL.md).
-  No factories here: build the two clients yourself, behind a lazy accessor in its own module,
-  and call it from inside the route handler.
+  Build the two clients yourself, behind a lazy accessor in its own module, and call it from
+  inside the route handler.
 
-The two are not symmetric on latency, and the difference decides where the trail can afford to
-be slow. The App Router can stream the trail out of the critical path; the Page Router cannot —
-`getServerSideProps` runs before any byte is sent, so the trail blocks the whole response. There
-the only levers are caching and skipping the work on pages that will not render it.
+## Traps
 
-The per-SDK mapping — which field feeds which input — is in
-[references/discovery.md](references/discovery.md), as greps you run against the installed
-package rather than a table that goes stale.
-
-## Traps and things that do not exist
-
-- **There is no breadcrumb API, hook, or component in any `@uniformdev/*` package.** No
-  `useBreadcrumbs`, no `getBreadcrumbs`, no JSON-LD helper. `getNodes` with `includeAncestors`
-  plus `RouteClient.get` with a projection are the whole primitive; you write the rest.
-- **The project map client does not resolve compositions.** `withCompositionData: true` returns
-  identity and status — `id`, `type`, `name`, `slug`, `typeName`, `locales`, `modified`, plus
-  edition fields — which is metadata for the project map UI. What it never returns is *resolved
-  content*: no parameters, no dynamic input resolution, no data resources, no localized value.
-  A crumb titled from `compositionData.name` is the composition's authoring name, identical for
-  every value of a dynamic segment, and the option inflates the response for nothing. Never
-  derive a title from it.
-- **Never fetch an ancestor with `getCompositionById` either.** It takes no dynamic input values
-  and no release, so a title bound to a dynamic input comes back as the raw `${...}` expression,
-  and the payload is the whole composition tree. The Route API call on the *expanded* path is
-  the call that resolves all of it — that is what it exists for.
 - **The Route API needs the expanded path, not the template.** `get({ path: '/:locale/products' })`
   is `notFound`; `get({ path: '/en/products' })` is the composition. Expand first, then ask.
-- **`getRoute` is deprecated. The method is `RouteClient.get`.** Same options, same `select`.
-- **The projection key is `select`, not `projections`.** The parts that matter here are
-  `fields: { only: [...] }` and `slots: { only: [] }` — the latter is how you say "no slots at
-  all". The endpoint's own docs give this exact pair as their breadcrumb example. The full spec
-  (`fieldTypes`, `fields.locales`, `fields.blockDepth`, `slots.depth`, `slots.named`) is on
-  `ProjectionSpec` in the installed package.
-- **`RouteClient.get` requires `@uniformdev/canvas` ≥ 20.74.7 — the projection itself does not.**
-  `select` has been on the route call since 20.72.3; 20.74.7 is where `getRoute` was renamed to
-  `get` and `Projection` became an exported type. Below it, the same call works as
-  `getRoute({ ..., select })`. Check which method the installed copy has before you bump
-  anything.
-- **An unknown field name in `select` is a silent no-op.** Misspell the title parameter and the
-  field is simply absent from `composition.parameters`, with no error anywhere. Guard with
-  optional chaining and fall back to the node name — and check the id against the component
-  definition.
-- **`getNodes` has no `locale` option.** Localization on the tree is `expanded: true` plus
-  `node.locales[locale]`. Localization of a title is the Route API's job: the `:locale` segment
-  in the expanded path selects it, or pass `locale` explicitly when the project uses locale path
-  segments instead of a locale node.
-- **`Route.expand()` does not fail on a missing value — it leaves the `:token` in place.**
-  `new Route('/products/:category/:sku').expand({ dynamicInputValues: { category: 'shoes' } })`
-  returns `/products/shoes/:sku`. Nothing throws, nothing warns. Check the result for a segment
-  starting with `:` before using it as an href or a route path.
-- **A node existing does not mean a page is live.** Project map changes take effect immediately
-  and have no publish step, so an ancestor node can point at a composition that has never been
-  published. The Route API tells you: at `state: 64` it resolves to `notFound`. Unlink the crumb,
-  keep the level.
-- **`includeAncestors` can legitimately return a partial chain.** If the API key's role has a
-  branch-scoped `PrmNodeRead` policy, the response is filtered server-side to that branch — the
-  trail then starts mid-tree instead of at the root. The type docs say it outright: consumers
-  must not assume the response contains the entire project map.
-- **Do not fetch the current page's title.** You are already rendering that composition; its
-  title is in props.
-- **`parentPath`, `isLeaf`, and locale `path` are only returned with `expanded: true`.** Without
-  it, `node.locales` omits inherited locales entirely and `getNodeLocalePath` falls back to the
-  default path.
+- **A wrong field id in `select` fails silently.** The API accepts it and returns no parameter,
+  so every crumb falls back to its node name with no error anywhere. Check the id against the
+  component definition.
+- **Forward `releaseId`.** Without it, an editor previewing a release sees base titles in the
+  trail while the page itself shows the release.
 
 ## Resources
 
 See `references/` for detailed guidance:
 - [Discovery](references/discovery.md) — find the existing breadcrumb surface, the installed
-  package versions, the title parameter, and where this SDK keeps the five inputs, before
+  package versions, the crumb label field, and where this SDK keeps the five inputs, before
   writing anything
 - [Building the trail](references/building-the-trail.md) — the complete `getBreadcrumbTrail`
   module with both clients, SDK wiring, titles through the Route API, dynamic paths, localized

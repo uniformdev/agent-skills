@@ -192,9 +192,8 @@ import type { Crumb } from '@/lib/breadcrumbs/trail';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL!;
 
 export function BreadcrumbsJsonLd({ crumbs }: { crumbs: Crumb[] }) {
-  // `item` is required on every entry except the last one. A placeholder ancestor — or a
-  // crumb whose path still held a ":token" — has no URL to put there, and inventing one
-  // ships a 404 into the markup. Drop those entries and renumber, or the whole list is
+  // `item` is required on every entry except the last one. A placeholder or unpublished
+  // ancestor has no URL to put there, and inventing one ships a 404 into the markup. Drop those entries and renumber, or the whole list is
   // invalid. This is the one place the structured data may legitimately be shorter than
   // the visible trail; see the note below.
   const entries = crumbs.filter((crumb, index) => crumb.href || index === crumbs.length - 1);
