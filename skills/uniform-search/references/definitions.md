@@ -5,7 +5,7 @@
 rather than a folder of per-entity files). `uniformsearch.config.js` is the config that points at
 it. Together they push everything the search components need, and nothing the project already has.
 
-## What the package contains (create-uniform-search 0.0.7 – 0.0.10, identical)
+## What the package contains
 
 | Entity | Ids |
 |---|---|
@@ -16,7 +16,7 @@ it. Together they push everything the search components need, and nothing the pr
 
 Check the shipped version with `node -e 'console.log(require("./search-components.json").components.map(c=>c.id))'`.
 The starter the CLI is synced from is still ahead: `relatedContent`, `productCard`, `articleCard`
-and the `SearchBoxAutocomplete.tsx` file are not in 0.0.7. Map only what has both a definition
+and the `SearchBoxAutocomplete.tsx` file are not shipped. Map only what has both a definition
 and a file; see [components.md](components.md#newer-components-starter-ahead-of-the-published-cli).
 
 Component ids, slots and the parameters the React code reads:
@@ -26,13 +26,13 @@ Component ids, slots and the parameters the React code reads:
 | `searchEngine` | `search-top`, `search-main`, `search-bottom` (each with an explicit `allowedComponents` list) | `baseFilters` (filterByConfig), `entryUrlMapping` (entryUrlMapping), `queryBy` (queryByConfig), `toleranceLevel` (select: off/basic/aggressive), `retrieval` (select: hybrid/exact) |
 | `searchBox` | — | `label`, `placeholder`, `delay` (+ six `dex-*` presentation params the component ignores, see below) |
 | `searchAutocomplete` | — | `label`, `placeholder`, `delay`, `minChars`, `maxResults`, `resultsPath`, `viewAllText`, `noResultsText`, `queryBy`, `entryUrlMapping`, `filterBy` (filterByConfig), `toleranceLevel` |
-| `searchBoxAutocomplete` | — | `label`, `placeholder`, `delay`, `minChars`, `maxResults`, `resultsPath`, `viewAllText`, `noResultsText` — **no component file shipped in 0.0.7; do not map** |
+| `searchBoxAutocomplete` | — | `label`, `placeholder`, `delay`, `minChars`, `maxResults`, `resultsPath`, `viewAllText`, `noResultsText` — **no component file shipped; do not map** |
 | `recommendations` | — | `title`, `contentType`, `boostCategories`, `maxRecommendations` (number), `entryUrlMapping` |
 | `searchList` | — | `cardButtonText`, `noResultsFoundText`, `tryDifferentFiltersText`, `clearAllFilterText` |
 | `facetContainer` | `facets` | — |
 | `searchFacet` | — | `fieldKey` (facetByConfig), `type` (select/multiSelect/range), `title` |
 | `searchPagination` | — | `siblingCount`, `pageSizes` ($block of `pageSize`) |
-| `searchSorting` | — | `orderBy` ($block of `orderBy`), `predefinedSort` (predefinedSortConfig — needs `@uniformdev/search` ≥ 0.0.10, see install.md) |
+| `searchSorting` | — | `orderBy` ($block of `orderBy`), `predefinedSort` (predefinedSortConfig) |
 
 `filterByConfig`, `queryByConfig`, `facetByConfig`, `sortByConfig`, `predefinedSortConfig` and
 `entryUrlMapping` are parameter types registered by the `uniform-search-integration` Mesh
@@ -93,7 +93,7 @@ field, not a search collection name. After the run, confirm the CLI's
 
 ## Strip the Design Extensions parameters
 
-The package's `searchBox` (unchanged through 0.0.10) carries six parameters typed `dex-segmented-control-parameter`,
+The package's `searchBox` carries six parameters typed `dex-segmented-control-parameter`,
 `dex-token-selector-parameter` and `dex-color-palette-parameter` (in two groups, "Presentation
 Settings" and "Label"). Those types come from the Design Extensions integration, and
 `SearchBox.tsx` reads none of them. Unless Design Extensions is installed in the project, remove

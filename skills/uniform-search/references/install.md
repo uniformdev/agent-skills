@@ -41,14 +41,12 @@ but say it explicitly); `--no-skill` stops it installing its own `.claude/skills
 copy next to this skill; `--locale` skips the API detection; `--dry-run` previews the file list.
 Without `-y`, existing files are overwritten in non-interactive mode; with `-y` they are skipped.
 
-Verified output with `create-uniform-search@0.0.10` (templates identical from 0.0.7) on the v2
-starter: 33 files —
+Verified output on the v2 starter: 33 files —
 `components/search/**` (10 components incl. `Recommendations.tsx`, `SearchFilters/`,
 `renderers/`, `ui/`), `lib/search/*.ts` (6: `searchClient`, `projectMapClient`, `typoTolerance`,
 `retrieval`, `enrichmentCategories`, `cachedProjectMapPaths`), `styles/search-theme.css`, plus
 `search-components.json` and `uniformsearch.config.js` at the root, and a
-`Set search content locale to "<locale>"` line. The CLI runtime and flags are unchanged since
-0.0.6; only the templates moved. The scaffolded files import `react`, `next/navigation`,
+`Set search content locale to "<locale>"` line. The scaffolded files import `react`, `next/navigation`,
 `next/headers`, `next/cache`, `@uniformdev/search`, `@uniformdev/search/react`,
 `@uniformdev/next-app-router/{compat,component}`, `@uniformdev/next-app-router-client`,
 `@uniformdev/context`, their own `@/components/search` / `@/lib/search` paths — and one file the
@@ -56,12 +54,10 @@ project must provide: `@/lib/uniform/manifest.json` (see Reconcile below).
 
 ## Runtime package
 
-The CLI does not install it. Detect the package manager from the lockfile and install
-`@uniformdev/search` (peer: React ≥ 18). `getHighlightMatch`, which the scaffolded
-`ui/Highlighted.tsx` imports, exists from `0.0.3`; `trackClick` from `0.0.7`; the ranking
-exports (`resolveEnrichmentBoost`, `SearchParams.mode`) from `0.0.8`; `0.0.9` is the same code
-with `projectId` documented as optional; `0.0.10` adds the predefined-sort exports that CLI
-≥ 0.0.7's `SearchSorting.tsx` imports. Install the latest — an older pin fails typecheck.
+The CLI does not install it. Detect the package manager from the lockfile and install the
+latest `@uniformdev/search` (peer: React ≥ 18). The scaffold imports the SDK's ranking and
+predefined-sort exports, so an older pin fails typecheck; `npm view @uniformdev/search version`
+and [discovery.md](discovery.md) tell you what is installed.
 
 ## Theme tokens
 
@@ -86,7 +82,9 @@ NEXT_PUBLIC_UNIFORM_DEFAULT_LOCALE=      # localized projects only, e.g. en-US; 
 ```
 
 The client posts to `${NEXT_PUBLIC_UNIFORM_SEARCH_API_URL}/api/search` with the key in an
-`x-api-key` header — the base URL, not the `/api/search` path, goes in the variable.
+`x-api-key` header — the base URL, not the `/api/search` path, goes in the variable. Both are
+`NEXT_PUBLIC_*`, so they are inlined at build time: a value added after the build is not picked
+up until the next build.
 
 **Where the key comes from.** The user opens the Uniform Search tool in their Uniform project and
 presses **Connect** in the status strip; the drawer shows the search URL and mints a search-only
@@ -96,7 +94,7 @@ issues a new key and keeps the old one working for 24 hours. Deployments provisi
 drawer existed also accept a deployment-wide `SEARCH_API_KEY` value (legacy, being retired).
 
 **The project id is not part of the contract any more.** A `ufs.…` key identifies its project, and
-the service fills `projectId` in from the key. Nothing scaffolded by 0.0.7 reads
+the service fills `projectId` in from the key. Nothing scaffolded reads
 `NEXT_PUBLIC_UNIFORM_PROJECT_ID`. If the project already defines it (an older scaffold, or its own
 use), it must equal the project the key was minted for — a value naming any other project turns
 every search into a 401. Never set it from a guess.
@@ -107,39 +105,8 @@ saying where the value comes from. The CLI push the user runs later uses the sta
 
 ## Reconcile the scaffold
 
-Run `npx tsc --noEmit` right after scaffolding and installing the SDK. What it reports depends
-on which CLI and SDK versions met; every case below was hit on the v2 starter and each fix was
-typechecked and built (`@uniformdev/next-app-router` 20.73, `@uniformdev/search` 0.0.10; the
-strip recipe on 0.0.9).
-
-### `SearchSorting.tsx`: `'@uniformdev/search'` has no exported member `toPredefinedSortParam`
-
-CLI ≥ 0.0.7 ships a Search Sort that registers an editor-pinned *predefined sort*; the SDK exports
-it needs arrived in `@uniformdev/search` 0.0.10 (four errors on anything older:
-`toPredefinedSortParam`, `PredefinedSortValue`, `registerPredefinedSort`,
-`unregisterPredefinedSort`). **The fix is the SDK upgrade** — `npm install @uniformdev/search@latest`,
-then `grep -c toPredefinedSortParam node_modules/@uniformdev/search/dist/index.d.ts` ≥ 1. Only
-when the project is pinned to an older SDK and cannot move, strip the feature; the component
-keeps its visitor-facing order-by exactly as before, and the `predefinedSort` parameter is
-simply ignored:
-
-```bash
-node -e '
-const fs=require("fs");const f="components/search/SearchSorting.tsx";let s=fs.readFileSync(f,"utf8");
-const cuts=[
- "import { toPredefinedSortParam, type PredefinedSortValue } from \x27@uniformdev/search\x27;\n",
- "  /**\n   * Editor-defined predefined sort (`predefinedSortConfig`): a field, behavior relevancy or\n   * conditional `_eval` rules. Applied with the default ordering only (the first order-by\n   * option, or none); when the visitor picks another option, only that option is used.\n   */\n  predefinedSort?: PredefinedSortValue;\n",
- "    registerPredefinedSort,\n    unregisterPredefinedSort,\n",
- "  // The predefined sort applies even when there are no visitor options (nothing rendered);\n  // the provider drops it while the visitor has a non-default option selected.\n  useEffect(() => {\n    registerPredefinedSort(id, toPredefinedSortParam(predefinedSort));\n    return () => unregisterPredefinedSort(id);\n  }, [id, predefinedSort, registerPredefinedSort, unregisterPredefinedSort]);\n\n",
-];
-for(const c of cuts){ if(!s.includes(c)) throw new Error("anchor not found — different CLI version; edit by hand"); s=s.replace(c,""); }
-s=s.replace("({ orderBy, predefinedSort })","({ orderBy })");
-fs.writeFileSync(f,s);
-'
-```
-
-Tell the user the predefined-sort editor on Search Sort has no effect until the SDK is upgraded
-and the strip is reverted (re-run the CLI over the file).
+Run `npx tsc --noEmit` right after scaffolding and installing the SDK. On the v2 starter it
+reports one error, and `next build` a second; both fixes below were typechecked and built there.
 
 ### `enrichmentCategories.ts`: cannot find module `@/lib/uniform/manifest.json`
 
@@ -187,27 +154,6 @@ if(!s.includes(a)||!s.includes(c)) throw new Error("anchor not found"); fs.write
 `fetchPathsByNodeId` keeps an in-process map per locale, so the cost is one extra request per
 server process, not per visitor.
 
-### CLI 0.0.6 only: `projectMapClient.ts` sends no key
-
-`/api/project-map` (node-id → path map for composition hits) requires `x-api-key` and fails
-closed; the 0.0.6 scaffold's `lib/search/projectMapClient.ts` calls it bare, gets a 401, logs it
-to the browser console and returns `{}` — every composition hit then renders without a link.
-0.0.7 fixed this. On a 0.0.6 scaffold add the header (run from the source root):
-
-```bash
-node -e '
-const fs=require("fs");const f="lib/search/projectMapClient.ts";let s=fs.readFileSync(f,"utf8");
-const from="    const res = await fetch(url);";
-const to="    const apiKey = process.env.NEXT_PUBLIC_UNIFORM_SEARCH_API_KEY;\n    const res = await fetch(url, { headers: apiKey ? { \x27x-api-key\x27: apiKey } : {} });";
-if(!s.includes(from)) throw new Error("anchor not found — the CLI version already sends the key?");
-fs.writeFileSync(f,s.replace(from,to));
-'
-grep -n "x-api-key" lib/search/projectMapClient.ts   # → one hit
-```
-
-If the anchor is not found, the scaffold already sends the key (0.0.7 or newer) and nothing is
-needed.
-
 ## Register the components
 
 The scaffolded components use the compat shape — `ComponentProps` from
@@ -243,10 +189,10 @@ export const searchMappings = {
 };
 ```
 
-CLI ≥ 0.0.7 also ships `Recommendations.tsx` with a `recommendations` definition — map it
+The CLI also ships `Recommendations.tsx` with a `recommendations` definition — map it
 (`recommendations: adapted("recommendations", Recommendations)`) once the reconcile step above is
 done; it is a server component, and the adapter wraps it fine. Map only ids that have **both** a
-definition and a file: the 0.0.7 package defines `searchBoxAutocomplete` without shipping the
+definition and a file: the package defines `searchBoxAutocomplete` without shipping the
 component (leave it unmapped), and `SearchTotalAmount.tsx` ships without a definition. A future
 CLI may add `RelatedContent`, `ProductCard`, `ArticleCard`; map them the same way when both
 halves are present.
@@ -292,9 +238,7 @@ npx tsc --noEmit
 Then `next build` if the project builds without live Uniform credentials. Typical failures and
 their cause: unresolved `@/components/search/...` → wrong `--src-root` for the alias;
 `Cannot find module '@uniformdev/search'` → runtime package not installed; `no exported member
-'toPredefinedSortParam'` → SDK older than 0.0.10, upgrade it (see Reconcile); `Cannot find module
+'toPredefinedSortParam'` → SDK too old, install the latest; `Cannot find module
 '@/lib/uniform/manifest.json'` → download the manifest; `To use "use cache"` at build → take the
 uncached path; `mono-*` classes with no effect → theme file not imported; search returns 401 →
-a `NEXT_PUBLIC_UNIFORM_PROJECT_ID` naming a different project than the key; composition hits
-have no links and the console shows `project map fetch failed: 401` → a 0.0.6 scaffold without
-the header patch.
+a `NEXT_PUBLIC_UNIFORM_PROJECT_ID` naming a different project than the key.

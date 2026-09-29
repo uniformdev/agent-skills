@@ -11,8 +11,8 @@ from the source root after step 3 (scaffold) and step 4 (package install).
 node -e 'console.log(require("./search-components.json").components.map(c=>c.id).join("\n"))'
 
 # component files on disk vs. definitions in the package: a file with no definition
-# (SearchTotalAmount.tsx) is not mapped; a definition with no file (searchBoxAutocomplete in
-# 0.0.7) is not mapped either — map only ids present in both lists
+# (SearchTotalAmount.tsx) is not mapped; a definition with no file (searchBoxAutocomplete)
+# is not mapped either — map only ids present in both lists
 ls components/search/*.tsx | xargs -n1 basename | sed 's/\.tsx$//'
 
 # parameters typed by another integration — strip dex-* unless Design Extensions is installed
@@ -21,10 +21,8 @@ grep -o '"type": "dex-[a-z-]*"' search-components.json | sort | uniq -c
 # the authored locale — must equal the project's default locale
 grep -o '"_locales": \[[^]]*\]' search-components.json | sort -u
 
-# does the project-map client send the key? no hit → CLI 0.0.6, apply the patch in install.md
+# the project-map client must send the key (one hit) and nothing may read a project id (no hits)
 grep -n "x-api-key" lib/search/projectMapClient.ts
-
-# does the scaffold still gate on a project id? (0.0.6: yes, in SearchEngine.tsx; 0.0.7: no)
 grep -rn "NEXT_PUBLIC_UNIFORM_PROJECT_ID" components/search lib/search
 
 # what the scaffold expects from the SDK and the project — every hit is something to reconcile
@@ -45,14 +43,9 @@ grep -h "^export" node_modules/@uniformdev/search/dist/index.d.ts node_modules/@
 # the request shape the service accepts (mode, orderBy, enrichmentBoost, projectId are all optional)
 awk '/interface SearchParams/,/^}/' node_modules/@uniformdev/search/dist/*.d.ts
 
-# ranking support: 0 hits → older than 0.0.8, retrieval mode and behavior relevancy do not apply
+# the exports the scaffold imports — 0 hits on any of them → the SDK is too old, install the latest
 grep -c "resolveEnrichmentBoost\|SearchMode" node_modules/@uniformdev/search/dist/index.d.ts
-
-# predefined sort: 0 hits → SDK < 0.0.10; upgrade it (CLI ≥ 0.0.7's SearchSorting.tsx imports it)
 grep -c "toPredefinedSortParam" node_modules/@uniformdev/search/dist/index.d.ts
-
-# click tracking: 0 hits → older than 0.0.7
-grep -c "trackClick" node_modules/@uniformdev/search/dist/*.d.ts
 ```
 
 ## 3. Which credential does the project hold?

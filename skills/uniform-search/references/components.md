@@ -2,8 +2,7 @@
 
 How the scaffolded components behave, so changes to them (renderers, styling, extra components)
 keep working with the definitions and the search service. File names are under
-`components/search/` after the CLI runs; this describes what `create-uniform-search@0.0.7`
-ships (templates unchanged through 0.0.10). Read the scaffolded files for anything not covered here — they are the source.
+`components/search/` after the CLI runs. Read the scaffolded files for anything not covered here — they are the source.
 
 ## Provider and slots
 
@@ -37,13 +36,14 @@ is the fallback. To support the project's own content types, add a module export
 `source`, `type: string[]` and `Renderer`, and push it into `rendererModules`. Hit URLs come
 from `useUrlResolver()`, backed by the engine's `entryUrlMapping` and, for composition hits, a
 node-id → path map fetched from the search service's `/api/project-map` endpoint
-(`lib/search/projectMapClient.ts`) — an authenticated call that sends the search key; a scaffold from
-CLI 0.0.6 omitted it, see [install.md](install.md#reconcile-the-scaffold).
+(`lib/search/projectMapClient.ts`). That endpoint fails closed: without a valid `x-api-key` it
+returns 401, the client logs `project map fetch failed: 401` to the browser console only and
+returns an empty map, and every composition hit renders without a link — so the header the
+scaffold sends is load-bearing; keep it if you touch the file.
 
-Click analytics: `@uniformdev/search ≥ 0.0.7` exposes `trackClick({ docId, locale })` on the
-client for the integration's "top clicked" report. The scaffolded `SearchList` (unchanged through
-CLI 0.0.7) does not call it; the starter's newer one wraps each hit in a capture-phase
-`onClickCapture` that does.
+Click analytics: the SDK exposes `trackClick({ docId, locale })` on the client for the
+integration's "top clicked" report. The scaffolded `SearchList` does not call it; the starter's
+newer one wraps each hit in a capture-phase `onClickCapture` that does.
 
 ## Autocomplete
 
@@ -88,14 +88,14 @@ The definition's `type` parameter (facet type) collides with the reserved `Compo
 
 ## Newer components (starter ahead of the published CLI)
 
-CLI 0.0.7 ships `Recommendations` and the ranking helpers; `SearchBoxAutocomplete`,
-`RelatedContent` and the cards are still starter-only. Until `search-components.json` in the
+The CLI ships `Recommendations` and the ranking helpers; `SearchBoxAutocomplete`,
+`RelatedContent` and the cards are starter-only. Until `search-components.json` in the
 project lists a type id **and** the CLI has written its file, do not write it by hand. Register each one whose type id is in the package (see the mapping rule in
 [install.md](install.md#register-the-components)).
 
 ### Search Box Autocomplete (`searchBoxAutocomplete`)
 
-**Not shipped by CLI 0.0.7–0.0.10** — the package defines the type (and allows it in `search-top`), but
+**Not shipped by the CLI** — the package defines the type (and allows it in `search-top`), but
 no `SearchBoxAutocomplete.tsx` or `ui/AutocompletePanel.tsx` is written; leave it unmapped. In
 the starter, `SearchBoxAutocomplete` lives *inside* a Search Engine (`search-top` slot): it takes no
 `queryBy`/`entryUrlMapping` of its own but reads the engine's `performSearch`, `queryBy`,
@@ -106,7 +106,7 @@ page; choose `searchAutocomplete` for a header.
 
 ### Recommendations (`recommendations`)
 
-**Shipped by CLI 0.0.7.** An **async server component**: reads the `ufvd` cookie (`CookieTransitionDataStore` from
+An **async server component**: reads the `ufvd` cookie (`CookieTransitionDataStore` from
 `@uniformdev/context`), reduces the scores with `resolveEnrichmentBoost`, runs one wildcard
 search with `orderBy: 'behavior'` and renders the hits through the same result renderers.
 Parameters: `title`, `contentType` (public id; empty = every type), `boostCategories`
@@ -132,7 +132,7 @@ scales to the whole index rather than a fetched page of entries.
 
 ### Related Content (`relatedContent`) with Product Card / Article Card
 
-**Starter-only as of CLI 0.0.10** — neither the definitions nor the files ship. A different mechanism from everything above: **no search request from the site**. `RelatedContent`
+**Starter-only** — neither the definitions nor the files ship. A different mechanism from everything above: **no search request from the site**. `RelatedContent`
 is a heading plus an `items` slot rendered as a card grid. Authors drop Uniform's **Loop**
 component into the slot, point it at a **Uniform Search data resource** — the integration
 registers a `uniformSearch` data connector with two archetypes, `searchQuery` and `curatedList` —

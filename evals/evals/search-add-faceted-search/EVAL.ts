@@ -174,7 +174,7 @@ test('the project-map client sends the search key', () => {
   expect(client, 'the scaffold ships lib/search/projectMapClient.ts (node-id → path map for composition hits)').toBeDefined();
   expect(
     read(client!),
-    '/api/project-map fails closed without x-api-key, so a client that omits the header silently loses every composition hit\'s link; CLI 0.0.7+ scaffolds send it, a 0.0.6 scaffold needs the header added (install.md → Reconcile the scaffold, "CLI 0.0.6 only")'
+    '/api/project-map fails closed without x-api-key, so a client that omits the header silently loses every composition hit\'s link — the scaffolded projectMapClient.ts sends it; keep it (components.md → Result renderers)'
   ).toMatch(/x-api-key/);
 });
 
