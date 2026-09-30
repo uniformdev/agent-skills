@@ -66,7 +66,7 @@ export type TrailOptions = {
   releaseId?: string;
   /**
    * Parameter id(s) that label a crumb — the field the user chose, by default the page
-   * component definition's `titleParameter`. Several when the project has several page types.
+   * component definition's `titleParameter`. A list when the user chose several, tried in order.
    */
   titleParameter: string | string[];
   /** Title of the page being rendered. It is already in your props; it is never fetched. */
@@ -263,7 +263,7 @@ not the source of truth:
 | `locale` | `context.pageState.locale` | the locale you resolved the route with |
 | `state` | `context.state` | `context.preview ? CANVAS_DRAFT_STATE : CANVAS_PUBLISHED_STATE` |
 | `releaseId` | `context.pageState.releaseId` | `context.previewData?.releaseId` |
-| clients | `getProjectMapClient({ state })`, `getRouteClient({ state })` from `@uniformdev/next-app-router` | your own lazily-constructed pair — see below, and never at page module scope |
+| clients | `getProjectMapClient({ state })`, `getRouteClient({ state })` from `@uniformdev/next-app-router` | your own pair — see below |
 
 Breadcrumbs are a component an author places, not page furniture. Whatever the SDK, the trail
 belongs in its own component that is **registered in the project's component resolver** next to
@@ -316,15 +316,9 @@ component — it is the composition already being rendered, so this costs no req
 
 ### Page Router
 
-There is no client factory here, so you construct the two clients yourself — and **where** you
-construct them is the trap. A page module in the Page Router is a client module: everything at
-its top level is part of the browser bundle unless Next's `getServerSideProps` transform
-eliminates it. Constructing a Uniform client at the top of `pages/[[...path]].tsx` puts a
-`process.env.UNIFORM_API_KEY` read one failed tree-shake away from the browser, and a reviewer
-cannot tell by looking whether it was eliminated.
-
-Build them lazily in their own module instead. Nothing runs at import time, so there is nothing
-to eliminate, and the key is read only when a request is being served:
+There is no client factory here, so you construct the two clients yourself. Where they live is
+the project's call: follow how it already builds its other Uniform clients, or ask the user.
+The sample below keeps a lazily built pair in its own module:
 
 ```ts
 // lib/breadcrumbs/clients.ts
@@ -334,10 +328,7 @@ import type { TrailClients } from './trail';
 
 let clients: TrailClients | undefined;
 
-/**
- * Call this inside a server-side function only. Construction is deferred so no Uniform
- * client — and no UNIFORM_API_KEY read — exists at module scope in a page bundle.
- */
+/** Call this inside a server-side function only. Built on first use, then shared. */
 export function getTrailClients(): TrailClients {
   clients ??= {
     route: new RouteClient({
@@ -388,8 +379,9 @@ export const getServerSideProps = withUniformGetServerSideProps({
 ```
 
 `withUniformGetServerSideProps` also takes a `client` option, to hand it the same `RouteClient`
-the trail uses. It is evaluated at module scope, so taking it costs exactly the exposure this
-section avoids — leave it unset and let the handler use the SDK's own client.
+the trail uses. It is read when the page module loads, so it needs a client that exists at
+module scope; with the lazy pair above, leave it unset and let the handler use the SDK's own
+client.
 
 **Then solve the delivery problem, because the Page Router has one and the App Router does
 not.** A component registered with `registerUniformComponent` is rendered by
@@ -416,13 +408,13 @@ branch than the one the request actually matched. Prefer the matched route where
 The Route API call in `resolvePage` is the default for every linked ancestor, and it needs one
 thing from you: **the id of the title parameter.** It is on the page component's definition as
 `titleParameter`. Every component definition has one, so read it off the *page* component rather
-than the first match — [discovery.md](discovery.md#5-which-parameter-is-the-pages-title) has the
+than the first match — [discovery.md](discovery.md#5-which-field-labels-a-crumb) has the
 commands. Do not assume `title` or `pageTitle`.
 
-Where a project has several page types with different title parameters, pass them all and the
-module takes the first non-empty, in the order you pass them:
-`titleParameter: [articleDefinition.titleParameter, pageDefinition.titleParameter]` — read each
-one, in the order you want them tried.
+Where a project has several page types with different title parameters, which one labels a
+crumb is the user's call — ask. If they want each tried in turn, pass a list and the module takes
+the first non-empty, in the order given:
+`titleParameter: [articleDefinition.titleParameter, pageDefinition.titleParameter]`.
 
 What the Route API gets right that nothing else does, and why the old shortcuts fail:
 
@@ -602,4 +594,4 @@ skip-when-absent rule below are the only levers there.
   requests, where the SDK helpers already set it for you.
 - Keep one instance of each client alive (behind the SDK factories, or behind a lazy accessor
   as in the Page Router section) so their concurrency limits are shared. Constructing a pair per
-  request defeats it — but never construct them at the top level of a page module either.
+  request defeats it.

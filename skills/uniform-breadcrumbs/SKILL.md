@@ -22,7 +22,7 @@ Everything below is a pure function of these. Get them once, at the top of the c
 
 | Input | What it is |
 |---|---|
-| `nodePath` | The **unresolved** project map path of the current node, e.g. `/products/:category` — the route the request matched, not the URL it arrived on |
+| `nodePath` | The **unresolved** project map path of the current node, e.g. `/products/:category` |
 | `dynamicInputs` | Values captured from the URL, e.g. `{ category: "shoes" }` (a `:locale` node's value arrives here too) |
 | `locale` | The locale the route resolved with, if the project is localized |
 | `state` | `CANVAS_PUBLISHED_STATE` (64) or `CANVAS_DRAFT_STATE` (0) |
@@ -44,9 +44,9 @@ find them rather than assuming: [references/discovery.md](references/discovery.m
    - **Whether the trail starts with a home crumb.** Default: yes.
 
    If you cannot ask — a non-interactive run — use the defaults and say so in your summary.
-2. **One tree request.** `ProjectMapClient.getNodes({ path: nodePath, includeAncestors: true,
+2. **Fetch the chain.** `ProjectMapClient.getNodes({ path: nodePath, includeAncestors: true,
    depth: 0, expanded: true })` returns the current node and its ancestors, root first — the API
-   sorts them by path. Do not fetch level by level.
+   sorts them by path.
 3. **Expand each ancestor path** with `new Route(getNodeLocalePath(node, locale)).expand({
    dynamicInputValues: dynamicInputs })`. An ancestor's `:tokens` are a subset of the current
    route's, so the current request's dynamic inputs always fill them.
@@ -87,9 +87,6 @@ for a skeleton by reflex: this component renders nothing on pages with no trail,
 there flashes and then disappears. The rule for choosing one is in
 [references/rendering.md](references/rendering.md#the-suspense-fallback).
 
-**Page Router: cache, and skip the work on pages that will not render the trail.**
-`getServerSideProps` runs before any byte is sent, so there is no boundary to stream behind.
-
 ## Framework specifics
 
 - **Next.js App Router** — [uniform-nextjs-app-router](../uniform-nextjs-app-router/SKILL.md),
@@ -97,8 +94,6 @@ there flashes and then disappears. The rule for choosing one is in
   rather than constructing the clients yourself: they read the environment, switch off caching
   for draft and editor state, and tag route fetches by path.
 - **Next.js Page Router** — [uniform-nextjs-page-router](../uniform-nextjs-page-router/SKILL.md).
-  Build the two clients yourself, behind a lazy accessor in its own module, and call it from
-  inside the route handler.
 
 ## Traps
 

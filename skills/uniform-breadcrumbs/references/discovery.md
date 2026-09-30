@@ -118,9 +118,10 @@ npx uniform component get page 2>/dev/null | grep -i titleParameter
 
 A misspelled id is a silent no-op — the projection returns no parameters and every crumb
 silently falls back to its node name — so this step is not optional. If several page types have
-different title parameters, note all of them; the trail module accepts a list. If you cannot ask
-the user, use the `titleParameter` value you read here — not `title`, and not a placeholder with
-a comment telling someone to look it up.
+different title parameters, list them and ask the user which to use, or whether to try them in
+turn; the trail module accepts a list for that. If you cannot ask the user, use the page
+component's `titleParameter` value you read here — not `title`, and not a placeholder with a
+comment telling someone to look it up.
 
 ## 6. Is the project map localized, and how?
 
@@ -141,7 +142,7 @@ If neither appears, the project map is single-locale and `locale` stays `undefin
 |---|---|
 | Breadcrumbs already exist | Replace the data source, keep the markup and the component's public id |
 | `@uniformdev/project-map` missing | Add it at the version the other `@uniformdev/*` packages use |
-| Label field chosen (default: `titleParameter`) | Pass it to the trail's `titleParameter` option; several page types → pass the list |
+| Label field chosen (default: `titleParameter`) | Pass it to the trail's `titleParameter` option; a list only when the user chose several |
 | No locale segments anywhere | Skip `expanded: true` locale handling; pass no `locale` |
 | A `:locale` dynamic node | Pass the locale through `dynamicInputs`; the Route API reads it from the path |
 | Locale path segments on nodes | `expanded: true`, `getNodeLocalePath`, and pass `locale` to the Route API explicitly |

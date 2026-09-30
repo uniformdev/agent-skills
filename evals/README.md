@@ -256,14 +256,13 @@ Notes on reading particular fixtures:
   rather than only guard against drift. Each stages `uniform-breadcrumbs` with its framework
   skill. `uniform-data/component/page.yaml` sets `titleParameter: headline`: the Route API accepts
   a guessed id and returns nothing, so the assertion requires `"headline"` as a literal in the
-  trail modules — not inside `only: [...]`, where it can arrive through an option. The two
-  Suspense assertions are App Router only; the Page Router has no boundary to stream behind. Its
-  `matchedRoute` and `getServerSideProps` checks read o11y `filesModified`, because the starter
-  route already contains both. Without the skill, both SDKs fail titles from `RouteClient.get`
-  with a `select` projection, the title field read from the definition, `releaseId` forwarding,
-  and the judge on every run, and the App Router fails the Suspense assertion. Component
-  registration and `Route` expansion of ancestor paths fail on most runs. The other assertions
-  mostly pass unaided and stay as regression guards.
+  trail modules. The two Suspense assertions are App Router only; the Page Router has no
+  boundary to stream behind. Its `matchedRoute` and `getServerSideProps` checks read o11y
+  `filesModified`, because the starter route already contains both. Without the skill, both SDKs
+  fail titles from `RouteClient.get` with a `select` projection, the title field read from the
+  definition, `releaseId` forwarding, and the judge on every run, and the App Router fails the
+  Suspense assertion. Component registration and `Route` expansion of ancestor paths fail on most
+  runs. The other assertions mostly pass unaided and stay as regression guards.
 
 ## Running in CI
 
