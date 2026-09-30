@@ -5,7 +5,6 @@ worth handling before the first review.
 
 ## Contents
 
-- [The page is not on the project map](#the-page-is-not-on-the-project-map)
 - [Root and near-root pages](#root-and-near-root-pages)
 - [Placeholder ancestors](#placeholder-ancestors)
 - [Unpublished ancestors](#unpublished-ancestors)
@@ -16,28 +15,6 @@ worth handling before the first review.
 - [Nodes with allowed query strings](#nodes-with-allowed-query-strings)
 - [Failure policy](#failure-policy)
 - [What to check before shipping](#what-to-check-before-shipping)
-
-## The page is not on the project map
-
-A composition can render without a route: pattern previews, the playground, and contextual
-editing of a composition opened by ID. There is no current node, so there are no ancestors.
-
-**Do not match on the sentinel — match on the shape.** Every SDK marks this case differently,
-and the values are not documented API:
-
-| Route resolved by | `matchedRoute` is |
-|---|---|
-| `@uniformdev/next-app-router`, playground | the literal `"composition"` |
-| `@uniformdev/next-app-router`, composition rendered by id | the composition **id** |
-| `@uniformdev/canvas-next/route`, contextual editing | the literal `"contextual-editing"` |
-
-`nodePath.startsWith('/')` covers all three, anything a future SDK invents, and anything else
-malformed. A `=== "composition"` check covers one of them and silently builds a garbage trail
-for the rest.
-
-Return an empty trail and let the component render nothing. Do not render a placeholder message
-in production markup; if authors need feedback while editing, gate it on
-`context.isContextualEditing`.
 
 ## Root and near-root pages
 
@@ -181,7 +158,7 @@ because nothing on the page looks broken.
 - A dynamic page (`/products/:category/:sku`): no crumb href contains `:`.
 - A page under a placeholder ancestor: the level is present and is not a link.
 - The root page and a one-level-deep page: nothing renders.
-- A pattern in the playground: nothing renders, no error in the server log.
+- A pattern in the playground: nothing renders.
 - If the project is localized: switch locale and confirm both the titles and the hrefs change.
 - A page whose title parameter is bound to a dynamic input (`${category}`): the crumb shows the
   resolved value, not the expression.

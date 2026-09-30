@@ -118,4 +118,4 @@ See `references/` for detailed guidance:
 - [Rendering](references/rendering.md) — markup and accessibility, separators, home crumb,
   truncating deep trails, the Suspense fallback, and `BreadcrumbList` structured data
 - [Edge cases](references/edge-cases.md) — root pages, placeholder and unpublished ancestors,
-  patterns and playground, multiple project maps, and query-string nodes
+  multiple project maps, and query-string nodes

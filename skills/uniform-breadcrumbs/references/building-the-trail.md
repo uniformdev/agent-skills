@@ -92,10 +92,6 @@ export async function getBreadcrumbTrail(
     projectMapId,
   }: TrailOptions
 ): Promise<Crumb[]> {
-  // Playground and by-id renders hand you "composition" or a composition id, not a path.
-  // Skip the request rather than send one that cannot match.
-  if (!nodePath.startsWith('/')) return [];
-
   // The tree, and only the tree: the node and its ancestors, sorted by path, root first.
   const chain = await fetchChain(projectMap, nodePath, projectMapId);
   if (!chain.length) return [];
