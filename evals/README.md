@@ -217,8 +217,8 @@ the project state.
 | `automations-ai-review` | `uniform-automations` | greenfield, deterministic | AI copy review on a workflow stage: a `*.automation.ts` module, `workflow.transition` binding (not a save event), a CEL filter on workflow/stage **IDs** that stays total, Scout (`defineScoutAutomation` or `ScoutClient`) rather than a third-party model SDK, declared `permissions`, no deploy to the live project |
 | `automations-inbound-sync` | `uniform-automations` | greenfield, deterministic | inbound PIM sync: `incomingWebhook` trigger, a code handler (not Scout) for deterministic work, literal `process.env.UNIFORM_ENV_*` secret reads, `unauthorized` outcome checked before `rawBody` is parsed, `EntryManagementClient` + `permissions`, no secret value in logs |
 | `automations-outbound-sync` | `uniform-automations` | greenfield, deterministic | outbound search-index sync on publish: `entry.published` (not a stage, a save, or an inbound webhook), a code handler (not Scout), a CEL filter on `input.type` using `==` not JS `===`, `fetch` to the downstream URL rather than a vendor SDK, literal `process.env.UNIFORM_ENV_SEARCH_API_KEY`, no deploy to the live project |
-| `nextjs-breadcrumbs` | `uniform-breadcrumbs` | brownfield + LLM judge | adding breadcrumbs to a correct project: the trail read from the project map node tree (`getNodes` + `includeAncestors`) rather than invented by splitting the URL, keyed on the matched route, dynamic ancestor paths expanded with `Route`, **crumb titles resolved through `RouteClient.get` with a `select` projection** rather than from project map metadata, `releaseId` forwarded, non-navigable nodes left unlinked, `<nav aria-label>` / `<ol>` / `aria-current="page"` semantics, `BreadcrumbList` JSON-LD; judge grades ancestor-chain correctness, `:token` hrefs, server-only access, safe degradation and the title source |
-| `nextjs-page-router-breadcrumbs` | `uniform-breadcrumbs`, `uniform-nextjs-page-router` | brownfield + LLM judge | the same task and the **same PROMPT.md, byte for byte**, on the Page Router (`canvas-next` + `canvas-react`, `withUniformGetServerSideProps`, `registerUniformComponent`): tests the skill's framework-neutrality claim rather than trusting it, is the only eval coverage `uniform-nextjs-page-router` has, and is where the judge catches Uniform clients constructed at page module scope |
+| `nextjs-breadcrumbs` | `uniform-breadcrumbs` | brownfield + LLM judge | adding breadcrumbs to a correct project: the component registered in the resolver, dynamic ancestor paths expanded with `Route`, **crumb titles resolved through `RouteClient.get` with a `select` projection**, the title field read from the component definition, `releaseId` forwarded, a Suspense boundary with a component (not an element) as its fallback; judge grades the ancestor chain, `:token` hrefs, server-only access, safe degradation and the title source |
+| `nextjs-page-router-breadcrumbs` | `uniform-breadcrumbs`, `uniform-nextjs-page-router` | brownfield + LLM judge | the same task and the **same PROMPT.md, byte for byte**, on the Page Router (`canvas-next` + `canvas-react`, `withUniformGetServerSideProps`, `registerUniformComponent`), with the same checks minus Suspense: tests the skill's framework-neutrality claim rather than trusting it, and is the only eval coverage `uniform-nextjs-page-router` has |
 
 Notes on reading particular fixtures:
 
@@ -254,15 +254,13 @@ Notes on reading particular fixtures:
 - **`nextjs-breadcrumbs` and `nextjs-page-router-breadcrumbs` are the same task on both Next.js
   SDKs.** `PROMPT.md` is byte-identical across the two and names no API, so the pair can show lift
   rather than only guard against drift. Each stages `uniform-breadcrumbs` with its framework
-  skill. `uniform-data/component/page.yaml` sets `titleParameter: headline`: the Route API accepts
-  a guessed id and returns nothing, so the assertion requires `"headline"` as a literal in the
-  trail modules. The two Suspense assertions are App Router only; the Page Router has no
-  boundary to stream behind. Its `matchedRoute` and `getServerSideProps` checks read o11y
-  `filesModified`, because the starter route already contains both. Without the skill, both SDKs
-  fail titles from `RouteClient.get` with a `select` projection, the title field read from the
-  definition, `releaseId` forwarding, and the judge on every run, and the App Router fails the
-  Suspense assertion. Component registration and `Route` expansion of ancestor paths fail on most
-  runs. The other assertions mostly pass unaided and stay as regression guards.
+  skill. Only checks that fail without the skill are kept; what an agent gets right unaided
+  (reading the tree with `getNodes`, breadcrumb markup, leaving the project intact) is not
+  asserted. `uniform-data/component/page.yaml` sets `titleParameter: headline`: the Route API
+  accepts a guessed id and returns nothing, so the assertion requires `"headline"` as a literal
+  in the trail modules. The Suspense check is App Router only; the Page Router has no boundary to
+  stream behind. Component registration and `Route` expansion fail on most baseline runs rather
+  than all of them; every other check fails on every run.
 
 ## Running in CI
 

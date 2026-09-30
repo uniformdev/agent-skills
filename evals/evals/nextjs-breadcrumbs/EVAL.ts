@@ -4,21 +4,15 @@ import { environment } from '@vercel/agent-eval/eval';
 
 // The agent adds breadcrumbs to a Next.js App Router project that has none. The prompt
 // describes the *site* — pages organised by editors, levels that are not pages, URLs that
-// vary — and names no API, package, component type or technique, because the cheapest thing
-// a cold agent can do is split the request path, and that is precisely what the
-// uniform-breadcrumbs skill exists to prevent.
+// vary — and names no API, package, component type or technique.
+//
+// Only checks that fail without the uniform-breadcrumbs skill are kept, so each one is a gap
+// the skill closes. What an agent gets right unaided — reading the tree with getNodes,
+// breadcrumb markup, leaving the existing project intact — is not asserted.
 //
 // Assertions are deliberately NAME-INDEPENDENT: the prompt does not dictate a component type
 // name or a file name, so an agent that picks its own reasonable names must not be failed for
-// it. What is asserted is the mechanism behind each claim in the skill:
-//   - the trail is read from the project map node tree (getNodes + includeAncestors) …
-//   - … keyed on the matched route, not on the resolved URL
-//   - dynamic ancestor paths go through the SDK's own template engine
-//   - nodes with no page behind them are not turned into links
-//   - landmark + ordered-list + aria-current semantics
-//   - BreadcrumbList JSON-LD
-//   - the existing project's mappings, config and dependencies survive
-// Trail semantics that regex cannot see are left to the single judge criterion.
+// it. Trail semantics that regex cannot see are left to the single judge criterion.
 
 const read = (p: string) => readFileSync(p, 'utf-8');
 
@@ -46,18 +40,6 @@ const stripComments = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 const code = () => sourceFiles().map(({ content }) => stripComments(content)).join('\n');
-
-const deps = (): Record<string, string> => {
-  const pkgs = files().filter(({ f }) => f === 'package.json' || f.endsWith('/package.json'));
-  return pkgs.reduce<Record<string, string>>((acc, { content }) => {
-    try {
-      const p = JSON.parse(content);
-      return { ...acc, ...p.dependencies, ...p.devDependencies };
-    } catch {
-      return acc;
-    }
-  }, {});
-};
 
 // Component types mapped in the resolver, collected as string literals rather than by name:
 // the prompt never dictates what the breadcrumbs component type is called.
@@ -87,29 +69,6 @@ test('a new component type is registered without disturbing the existing one', (
   ).not.toEqual([]);
 });
 
-test('the trail is read from the project map, not invented from the URL', () => {
-  const src = code();
-  expect(
-    src,
-    'the ancestors must come from the project map node tree via ProjectMapClient.getNodes — a ' +
-      'trail built by splitting the request path loses node names, dynamic segments, ' +
-      'non-navigable levels and locale segments, and goes stale the moment an editor moves a page'
-  ).toContain('getNodes');
-  expect(
-    src,
-    'getNodes must be called with includeAncestors — fetching the current node alone yields no trail'
-  ).toContain('includeAncestors');
-});
-
-test('the current node is identified by the route that matched, not the resolved URL', () => {
-  expect(
-    code(),
-    'the unresolved node path comes from the matched route (context.matchedRoute, or ' +
-      'composition.projectMapNodes) — the resolved request path cannot be looked up against a ' +
-      'dynamic node such as /products/:category'
-  ).toMatch(/matchedRoute|projectMapNodes/);
-});
-
 test('dynamic ancestor paths are expanded with the SDK path-template engine', () => {
   const src = code();
   expect(
@@ -124,23 +83,9 @@ test('dynamic ancestor paths are expanded with the SDK path-template engine', ()
   ).toMatch(/\.expand\s*\(/);
 });
 
-test('nodes with no page behind them are not turned into links', () => {
-  const src = code();
-  const guards =
-    /(===|!==)\s*['"]placeholder['"]/.test(src) ||
-    /['"]placeholder['"]\s*(===|!==)/.test(src) ||
-    /(===|!==)\s*['"]composition['"]/.test(src) ||
-    /compositionId/.test(src);
-  expect(
-    guards,
-    'a project map node can be a grouping level with no composition attached (type ' +
-      '"placeholder"); linking one ships a 404 into the trail. Guard on the node type or on ' +
-      'the presence of a composition id before emitting an href'
-  ).toBe(true);
-});
-
 // Modules that build the trail — the ones that talk to the project map or are named for the
-// job. Negative assertions are scoped to them so a stray word elsewhere cannot fail a run.
+// job. Assertions about the trail's inputs are scoped to them so a stray word elsewhere cannot
+// pass a run.
 const breadcrumbModules = () =>
   sourceFiles()
     .map(({ f, content }) => ({ f, content: stripComments(content) }))
@@ -190,91 +135,12 @@ test('the projected title field is read from the component definition, not guess
   ).toMatch(new RegExp(`['"\`]${field}['"\`]`));
 });
 
-test('titles are not read from project map composition metadata', () => {
-  for (const { f, content } of breadcrumbModules()) {
-    expect(
-      content,
-      `${f}: withCompositionData returns identity and status metadata for the project map UI, ` +
-        'never resolved content — no parameters, no dynamic input resolution, no data resources. ' +
-        'A crumb titled from compositionData.name is the composition\'s authoring name, ' +
-        'identical for every value of a dynamic segment'
-    ).not.toMatch(/withCompositionData|compositionData/);
-  }
-});
-
-test('ancestor compositions are not fetched whole', () => {
-  for (const { f, content } of breadcrumbModules()) {
-    expect(
-      content,
-      `${f}: getCompositionById takes no dynamic inputs and no release, so a title bound to a ` +
-        'dynamic input comes back as its raw ${...} expression, and the payload is the whole ' +
-        'tree. Use RouteClient.get on the expanded path with a projection instead'
-    ).not.toMatch(/getCompositionById/);
-  }
-});
-
 test('release context is forwarded to the title lookup', () => {
   expect(
     breadcrumbModules().map(({ content }) => content).join('\n'),
     'pass releaseId through to RouteClient.get — without it an editor previewing a release ' +
       'sees base titles in the trail while the page itself shows the release'
   ).toMatch(/releaseId/);
-});
-
-test('the deprecated route method is not used', () => {
-  expect(
-    code(),
-    'RouteClient.getRoute is deprecated in favour of RouteClient.get — same signature and the ' +
-      'same `select` projection, renamed in @uniformdev/canvas 20.74.7'
-  ).not.toMatch(/\.getRoute\s*\(/);
-});
-
-test('markup uses breadcrumb landmark and ordered-list semantics', () => {
-  const src = code();
-  expect(src, 'the trail must be wrapped in <nav aria-label="..."> so the landmark is distinguishable').toMatch(
-    /<nav[^>]*aria-label/s
-  );
-  expect(src, 'the trail must be an ordered list — the order is the meaning').toMatch(/<ol[\s>]/);
-  expect(
-    src,
-    'the page the visitor is on must be marked with aria-current="page"'
-  ).toMatch(/aria-current/);
-});
-
-test('BreadcrumbList structured data is emitted', () => {
-  const src = code();
-  expect(src, 'search engines read breadcrumbs from schema.org BreadcrumbList JSON-LD').toContain(
-    'BreadcrumbList'
-  );
-  expect(src, 'each crumb needs a 1-based position inside an itemListElement array').toContain(
-    'itemListElement'
-  );
-  expect(src, 'JSON-LD must be emitted in a script tag typed application/ld+json').toContain(
-    'application/ld+json'
-  );
-});
-
-// Mirrors "keep the existing components working". Also self-protection: an agent that
-// rewrites package.json without vitest breaks the harness, which then reports 0% while
-// measuring nothing at all.
-test('extends the existing project instead of replacing its config', () => {
-  const installed = deps();
-  for (const pkg of ['vitest', 'typescript', '@types/node', '@types/react', '@types/react-dom']) {
-    expect(
-      installed[pkg],
-      `${pkg} was already in this project's devDependencies — add to the existing package.json, never drop entries you did not add`
-    ).toBeDefined();
-  }
-  expect(
-    installed['@uniformdev/next-app-router'],
-    'the project already depends on @uniformdev/next-app-router'
-  ).toBeDefined();
-  const middleware = read('middleware.ts');
-  expect(middleware, 'middleware must keep the edge runtime').toContain('experimental-edge');
-  expect(
-    read('app/layout.tsx'),
-    'UniformContext is set up by UniformComposition and must not be added to the layout'
-  ).not.toContain('UniformContext');
 });
 
 // App Router only — the Page Router twin has no streaming escape hatch, so its copy of this
@@ -293,16 +159,14 @@ test('the trail does not block the page render', () => {
       'page waits for it. Declare one on the resolveComponent result (`suspense: { fallback }`) ' +
       'or wrap the async work in <Suspense>'
   ).toBe(true);
-});
-
-test('the Suspense fallback is a component, not an element', () => {
-  const src = code();
-  if (!/suspense\s*:/.test(src)) return; // hand-rolled <Suspense fallback={<X/>}/> is correct JSX
-  expect(
-    src,
-    'on the resolveComponent result the SDK calls createElement() on `fallback`, so it must be ' +
-      'a component reference — `fallback: BreadcrumbsFallback`, never `fallback: <BreadcrumbsFallback />`'
-  ).not.toMatch(/fallback\s*:\s*</);
+  // A hand-rolled <Suspense fallback={<X/>}/> is correct JSX; only the resolver form is checked.
+  if (viaResolver) {
+    expect(
+      src,
+      'on the resolveComponent result the SDK calls createElement() on `fallback`, so it must be ' +
+        'a component reference — `fallback: BreadcrumbsFallback`, never `fallback: <BreadcrumbsFallback />`'
+    ).not.toMatch(/fallback\s*:\s*</);
+  }
 });
 
 test('the trail is correct, safe, and built on the server', async () => {
