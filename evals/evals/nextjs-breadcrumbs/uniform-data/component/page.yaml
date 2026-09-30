@@ -1,0 +1,20 @@
+id: page
+name: Page
+icon: screen
+canBeComposition: true
+titleParameter: headline
+parameters:
+  - id: headline
+    name: Headline
+    type: text
+    localizable: true
+    helpText: Shown as the page heading, and as the page's title in the Uniform UI.
+  - id: metaDescription
+    name: Meta description
+    type: text
+slots:
+  - id: content
+    name: Content
+    allowedComponents: []
+    inheritAllowedComponents: false
+    allowAllComponents: true

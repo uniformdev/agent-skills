@@ -24,6 +24,8 @@ export const GENERIC_EVALS = [
   'forms-add-form',
   'nextjs-app-router-add-component',
   'nextjs-app-router-setup',
+  'nextjs-breadcrumbs',
   'nextjs-navigation-mega-menu',
+  'nextjs-page-router-breadcrumbs',
   'search-add-faceted-search',
 ];

@@ -36,6 +36,19 @@ actually check what they claim.
 assertion is free, runs every time, and can be validated offline against captured runs before
 you spend a session.
 
+**An assertion that cannot fail measures nothing.** One that every current scaffold satisfies
+("the generated client sends the header" when the generator always writes it) only separates
+"ran the generator" from "didn't", which might be already covered by another assertion. Fold it in or drop it.
+
+## Prune against the baseline
+
+After the baseline run, list the assertions it **passed**. Each one is behaviour the agent has
+without the skill, so the skill text that defends it is a candidate to cut. Keep it only when
+you can say why — a failure seen on another run, another agent, or a harder variant of the
+fixture — and write that reason in the pull request. A skill whose baseline passes most of its
+assertions is either not needed or not being measured by the right assertions; find out which
+before merging.
+
 ## The rework loop
 
 1. **Baseline first.** Run the existing arms. Without a before number you cannot tell a
@@ -63,6 +76,43 @@ you spend a session.
 - **Check what the agent produced, not just the verdict.** The captured project under
   `evals/results/<arm>/<ts>/<eval>/run-1/project/` will often show that the skill worked and the
   grader broke, or vice versa.
+
+## What goes in `evals/README.md`
+
+The final state only: the fixture's row in the inventory table, the design notes a future reader
+needs to interpret it (why this starter tree, why this assertion is scoped the way it is), and
+**one** current results line. Dated re-measurements, deleted temporary arms, offline-validation
+history and "the first draft of this assertion was wrong" belong in the pull request. A README
+that narrates its own development ends up contradicting itself.
+
+## The pull request
+
+Write it last, from the final run, and regenerate every number in it — test counts, line counts
+and pass rates drift while you iterate. Two tables, not a pass rate:
+
+**Per arm — what the agent actually built**, one sentence each. "0% vs 100%" says the skill
+changed something; this says what:
+
+| Arm | Pass rate | Wall-clock | What the agent built |
+|---|---|---|---|
+| baseline | 0% (0 / 13) | 1057 s | hand-rolled `fetch` client behind a proxy API route, its own component set with invented type ids, definitions written into `uniform-data/` |
+| with-skill | 100% (13 / 13) | 177 s | CLI scaffold, reconcile step as written, resolver gated with the existing components untouched, package staged with `mode: 'create'`, push handed to the user |
+
+**Per assertion — baseline vs with-skill**, one row per `test()`, named for the failure mode
+rather than the test id:
+
+| Assertion | Baseline | With skill |
+|---|---|---|
+| runtime package is a dependency | ✗ | ✓ |
+| existing integration not damaged | ✓ | ✓ |
+| scaffold reconciled to build | n/a | ✓ |
+| push handed to the user | — | — |
+
+Legend under the table: `n/a` for an assertion that skips (say when), `—` for unasserted (say
+why — e.g. no transcript captured). Every ✓ in the baseline column needs a sentence on why the
+skill text behind it stays; see [Prune against the baseline](#prune-against-the-baseline). Then
+the sample size (`n = 1 per arm` is normal — say it), what the fixture does not exercise, and
+the history this README no longer carries.
 
 ## Cost
 

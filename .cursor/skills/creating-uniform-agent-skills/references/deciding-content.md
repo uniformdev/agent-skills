@@ -27,12 +27,11 @@ costs a few lines and gives the agent something to grep for.
 ## Content types ranked by value
 
 1. **Negative knowledge** — "there is no `ErrorBoundary`", "there is no `useOpenDialog` hook",
-   "`teamAdminRequired` has no `false`". Prevents confident invention. Nothing else can.
+   "`teamAdminRequired` has no `false`". Prevents confident invention. 
 2. **Decision rules** — which of two things to use and why. "`preRequest` always runs and can
    change the cache key; `request` runs only on a cache miss and cannot" beats two paragraphs
    describing each hook.
-3. **Sequences that span processes** — a handshake, an exchange, a deploy. Not derivable from
-   any one type.
+3. **Sequences that span processes** — a handshake, an exchange, a deploy. 
 4. **Traps whose failure is silent** — a CSRF header that is a constant rather than a secret and
    only works because the routes are not CORS-open; a cookie that must be `Partitioned` because
    the app is a cross-site iframe. Loud failures teach themselves; silent ones need writing down.
@@ -40,14 +39,49 @@ costs a few lines and gives the agent something to grep for.
 6. **One worked example per job** — the shape of the call, with the arguments people get wrong.
 7. …then, far below, exhaustive surface listings. Usually cut these.
 
+## Every step names the failure it prevents
+
+A pipeline step, a guard or a trap earns its place only by a concrete failure you have seen or
+verified — not one that could happen in principle. Before writing one, check the API does not
+already handle it: an endpoint that already sorts by path does not need a sort step. A
+defensive step with no named failure is noise the agent will faithfully reproduce in every
+project.
+
+## Facts versus the user's choices
+
+A skill states facts as rules. It does not turn a design or product choice into one.
+
+| It is… | Example | The skill says |
+|---|---|---|
+| A fact | "`sync push` has no `--mode` flag" | The rule, flat |
+| A choice with several valid answers | which parameter titles a crumb; where a client is constructed; one page type or several | **Ask the user during discovery**, with a recommended default and one line on the trade-off |
+
+Start discovery by asking the user what they want built wherever the answer changes the code,
+then read the codebase. A skill that guesses here fails silently on every project whose answer
+differs.
+
+## Not shipped means not documented
+
+Material that exists upstream but not in the published package — a starter component the CLI
+does not scaffold yet, an API on an unreleased branch — gets nothing. Describing it in detail invites the agent to hand-write it, and the
+description contradicts the shipped behaviour the rest of the skill documents.
+
 ## What to cut
 
 - Method lists with elided parameters (`await api.moveNode({ /* … */ })`). The name is in the
   types and the ellipsis carries nothing.
 - Prose restating a JSDoc comment that the agent will read anyway.
 - Anything already stated in another skill — link to it instead of restating it.
+- Anything already stated **in this skill**. SKILL.md holds the rule and a link; the reference
+  holds the explanation. The same trap in SKILL.md, a reference and a traps list is three
+  places to update and, sooner or later, two answers.
+- Version history. Write for the latest release; "0.0.6 only", "since 20.72.3" and "renamed in
+  20.74.7" go in the pull request. The one exception: an API added in the current major version
+  gets a single `requires <package> ≥ <version>` line.
 - Version-pinned field tables for schemas that change across SDK releases. Point at the schema
   and say to validate against it — *if* the schema exists.
+- Content the baseline already gets right. If the unaided agent passes an assertion, the skill
+  text defending it is costing tokens for nothing — cut it or say why it stays.
 
 ## Two markers worth reusing
 
