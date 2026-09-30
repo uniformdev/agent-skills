@@ -13,9 +13,10 @@ Uniform ships typed packages and runnable examples; both are authoritative in a 
 
 When 1 and 3 disagree, 1 wins and the disagreement is worth writing into the skill.
 
-**Types give the shape, not the behaviour.** A claim about what code *does* — caching, a shared
-concurrency limit, what an API response contains, what a factory returns on each call — needs
-the implementation: the published package's compiled `dist/*.js`.
+**Validate every behaviour claim against the implementation, not the types.** Types show shape
+only; they confirm nothing about what the code does — caching, a shared concurrency limit, what
+an API response contains, what a factory returns on each call. The published package's compiled
+`dist/*.js` holds the implementation; use it as the source of truth.
 
 ## Reading a package you do not have installed
 

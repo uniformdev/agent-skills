@@ -55,13 +55,15 @@ is the failure mode that costs most. "There is no `ErrorBoundary` in the design 
 is no `useOpenDialog` hook", "`teamAdminRequired` has no `false`". Collect these as you verify,
 and give them their own section.
 
-### 5. Write for the latest release, once
+### 5. Document the current release only, and each rule once
 
-Document the version that ships today. Version history ("0.0.6 only…", "renamed in 20.74.7")
-belongs in the pull request, not the skill — the one exception is a single "requires ≥ X" line
-when an older version is still likely to be installed. And state each rule in one place: SKILL.md
-gives the rule and links to the reference that explains it; it does not argue it again. Rules
-stated twice drift into contradictions.
+Write every claim for the version that ships today. Keep version history ("0.0.6 only…",
+"renamed in 20.74.7") out of the skill and put it in the pull request. If the skill relies on an
+API added in the current major version, state the minimum once, as `requires <package> ≥
+<version>`, and say nothing else about versions.
+
+State each rule in one place. SKILL.md gives the rule and links to the reference that explains
+it; it does not repeat the argument. A rule stated twice drifts into a contradiction.
 
 ## Workflow: a new skill
 

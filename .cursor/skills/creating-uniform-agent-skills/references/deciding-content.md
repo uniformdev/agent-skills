@@ -56,9 +56,9 @@ A skill states facts as rules. It does not turn a design or product choice into 
 | A fact | "`sync push` has no `--mode` flag" | The rule, flat |
 | A choice with several valid answers | which parameter titles a crumb; where a client is constructed; one page type or several | **Ask the user during discovery**, with a recommended default and one line on the trade-off |
 
-Discovery is not only reading the codebase. Its first step is asking what the user wants built
-wherever the answer changes the code — and a skill that guesses there fails silently on every
-project whose answer differs.
+Start discovery by asking the user what they want built wherever the answer changes the code,
+then read the codebase. A skill that guesses here fails silently on every project whose answer
+differs.
 
 ## Not shipped means not documented
 
@@ -76,8 +76,8 @@ description contradicts the shipped behaviour the rest of the skill documents.
   holds the explanation. The same trap in SKILL.md, a reference and a traps list is three
   places to update and, sooner or later, two answers.
 - Version history. Write for the latest release; "0.0.6 only", "since 20.72.3" and "renamed in
-  20.74.7" go in the pull request. Keep a single "requires ≥ X" line only when an older version
-  is still likely to be installed.
+  20.74.7" go in the pull request. The one exception: an API added in the current major version
+  gets a single `requires <package> ≥ <version>` line.
 - Version-pinned field tables for schemas that change across SDK releases. Point at the schema
   and say to validate against it — *if* the schema exists.
 - Content the baseline already gets right. If the unaided agent passes an assertion, the skill

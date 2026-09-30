@@ -148,7 +148,8 @@ Before submitting a new skill, verify:
 - [ ] Every relative link and `#anchor` resolves — in SKILL.md, the references, and any
       `EVAL.ts` failure message that points at a heading
 - [ ] No rule stated in more than one place; after changing a claim, grep for every copy
-- [ ] No version history — only the latest release, plus "requires ≥ X" where it matters
+- [ ] No version history — only the latest release, plus one `requires <package> ≥ <version>`
+      line for an API added in the current major version
 - [ ] Every pipeline step and trap names a concrete failure it prevents
 - [ ] Design choices are asked of the user with a recommended default, not decided silently
 - [ ] Pull request carries the per-arm and per-assertion tables, regenerated from the final run
