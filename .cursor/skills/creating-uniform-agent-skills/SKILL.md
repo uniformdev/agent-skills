@@ -4,7 +4,7 @@ description: Guides contributors through creating, reworking, and validating age
 license: MIT
 metadata:
   author: uniformdev
-  version: "2.0.0"
+  version: "2.1.0"
 ---
 
 # Creating and reworking agent skills for this repository
@@ -16,20 +16,13 @@ catch.
 
 Architecture context: [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
-## When to apply
-
-- Adding a skill for a new framework or product area (Nuxt, Astro, automations, routing)
-- **Reworking** an existing skill — `uniform-sdk`, `uniform-experience-modeling`,
-  `uniform-content-modeling`, `uniform-nextjs-*`, `uniform-mesh`
-- Responding to review feedback or an eval failure against a skill
-
 ## The one-line version
 
 **A skill is a set of instructions for doing a job — not a copy of the documentation.** Domain
 context earns its place only where the agent cannot get it itself. Everything below is a
 consequence of that.
 
-## Four decisions that matter more than format
+## Five decisions that matter more than format
 
 ### 1. Instructions over reference
 
@@ -62,6 +55,16 @@ is the failure mode that costs most. "There is no `ErrorBoundary` in the design 
 is no `useOpenDialog` hook", "`teamAdminRequired` has no `false`". Collect these as you verify,
 and give them their own section.
 
+### 5. Document the current release only, and each rule once
+
+Write every claim for the version that ships today. Keep version history ("0.0.6 only…",
+"renamed in 20.74.7") out of the skill and put it in the pull request. If the skill relies on an
+API added in the current major version, state the minimum once, as `requires <package> ≥
+<version>`, and say nothing else about versions.
+
+State each rule in one place. SKILL.md gives the rule and links to the reference that explains
+it; it does not repeat the argument. A rule stated twice drifts into a contradiction.
+
 ## Workflow: a new skill
 
 1. **Scaffold** `skills/uniform-<topic>/SKILL.md` plus `references/`, per
@@ -75,6 +78,10 @@ and give them their own section.
    automatically. There is no per-skill npm script to add.
 5. **Add an eval fixture** if the skill makes claims worth defending, and expect to iterate on
    it: [references/evals-and-rework.md](references/evals-and-rework.md).
+6. **Prune against the baseline.** Every assertion the baseline already passes is something the
+   agent knows unaided; cut or justify the skill text behind it.
+7. **Write the pull request last**, with the per-assertion table and the numbers regenerated
+   from the final run: [references/evals-and-rework.md](references/evals-and-rework.md#the-pull-request).
 
 ## Workflow: reworking an existing skill
 
@@ -103,16 +110,18 @@ The pattern this repo uses:
 - **Contributor-facing skills do not belong in `skills/`.** That directory is the plugin payload
   shipped to customers. This skill lives outside it for that reason.
 - **Single source of truth.** Two skills should not restate the same constraint — grep before
-  adding, and link instead of duplicating.
+  adding, and link instead of duplicating. A general SDK fact (a client option, a deprecation)
+  that `uniform-sdk` does not cover yet goes into `uniform-sdk` in the same pull request, and
+  your skill links to it.
 
 ## Resources
 
 - [Deciding what belongs in a skill](references/deciding-content.md) — the defer/inline test,
-  what to cut, and the content types that earn their tokens
+  facts versus the user's choices, what to cut, and the content types that earn their tokens
 - [Verifying against source](references/verifying-against-source.md) — how to read the shipped
   packages and examples, and the drift this has caught
 - [Evals and reworking](references/evals-and-rework.md) — fixtures, the A/B candidate loop,
-  reading results honestly
+  pruning against the baseline, reading results honestly, and what the pull request reports
 - [Skill template and checklist](references/skill-template.md) — frontmatter, structure,
   conventions
 - [CONTRIBUTING.md](../../../CONTRIBUTING.md) — architecture, distribution, generated output
