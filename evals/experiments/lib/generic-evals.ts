@@ -27,4 +27,5 @@ export const GENERIC_EVALS = [
   'nextjs-breadcrumbs',
   'nextjs-navigation-mega-menu',
   'nextjs-page-router-breadcrumbs',
+  'search-add-faceted-search',
 ];

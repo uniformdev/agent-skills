@@ -189,7 +189,7 @@ Most entity commands support the verbs: `get <id>`, `list`, `pull <path>`, `push
 |---|---|
 | `-f, --format` | Output format: `yaml` (default) or `json` |
 | `-o, --filename` | Write output to file instead of stdout |
-| `-m, --mode` | `mirror` (default), `createOrUpdate`, or `create` |
+| `-m, --mode` | `mirror` (default), `createOrUpdate`, or `create` — per-entity commands only (`uniform canvas component push` etc.). **`uniform sync push` has no `--mode` flag**; for sync the mode lives in `serialization.mode` (or a per-entity `push.mode`) in the config file. Verified against CLI 20.73 |
 | `-w, --what-if` | Dry run — report changes without applying them |
 | `-d, --diff` | Show changes: `off` (default), `update`, or `on` |
 | `--apiHost` | Override Uniform host (default `https://uniform.app`) |

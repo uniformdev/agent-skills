@@ -1,0 +1,3 @@
+This Next.js App Router project is already integrated with Uniform CMS and renders `page` and `hero` components. The Uniform Search integration is installed in our Uniform project and our content is indexed.
+
+Add a faceted search experience to this site: authors should be able to compose a search page in Uniform's visual editor with a search box, a results list, facet filters, sorting and pagination. Follow the conventions already used in this project and keep the existing components working. I will run any Uniform pushes myself — just tell me what to run. Make sure the project still type-checks when you are done.
