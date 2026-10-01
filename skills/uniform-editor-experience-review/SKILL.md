@@ -9,204 +9,134 @@ metadata:
 
 # Editor experience review for Uniform Canvas
 
-A workflow for one part of a Uniform frontend: how its components behave while authors edit them
-in Canvas. Review the components against the checks, report what gets in the author's way, let the
-user choose what to fix, and fix it without changing what visitors see.
+Review how a project's components behave while authors edit them in Canvas, report what gets in
+their way, let the user choose what to fix, and apply the fixes. Canvas renders the real page in
+an iframe, so whatever the page hides cannot be selected on the page: an empty button, a closed
+panel, an inactive slide, an empty slot with no height.
 
-Canvas renders the real frontend in an iframe. Whatever the page hides cannot be selected or
-edited: an empty button, a missing image, a closed accordion panel, an inactive slide, an empty
-slot with no height. The review looks for those cases and stays inside the editor experience; it
-is not a general code review.
+The preview routes, `resolveComponent` and the component APIs are in the
+[uniform-nextjs-app-router](../uniform-nextjs-app-router/SKILL.md) and
+[uniform-nextjs-page-router](../uniform-nextjs-page-router/SKILL.md) skills.
 
-Framework wiring (the preview route, `resolveComponent`, `UniformText` props) is in the
-`uniform-nextjs-app-router` and `uniform-nextjs-page-router` skills. The review starts from a page
-that already opens in Canvas.
-
-## Two rules
-
-**Production output does not change.** Every editor affordance sits behind a gate, and the gate
-matches what the author is doing:
-
-| Signal | True when | Gate on it |
-|---|---|---|
-| **In Canvas** (`isContextualEditing`) | The page is loaded inside Canvas, in the Edit **or** the Preview tab | Reachability: dropping `inert` and `pointer-events: none` |
-| **Edit tab** (`previewMode === 'editor'`) | The author is in the Edit tab (`'preview'` in the Preview tab, `undefined` outside Canvas) | Anything that changes the look: placeholders, force-opened panels, stopped autoplay, editor-only controls |
-
-The Preview tab shows authors the page as visitors will see it. A placeholder or a forced-open
-panel gated on `isContextualEditing` alone shows there too, which makes it a finding.
-
-**Everything authored stays reachable.** Every value an author can set needs, in the state it is
-authored in, something to click to select it, somewhere to type (text) and a drop target (slots).
-Empty, collapsed, closed, inactive and off-screen are all states content is authored in.
-
-## Signals per SDK
+## Editor signals
 
 | Need | App Router (`@uniformdev/next-app-router`) | Page Router (`@uniformdev/canvas-react`) |
 |---|---|---|
-| In Canvas | `context.isContextualEditing`, on the `context` prop every resolved component receives | `useUniformCurrentComposition().isContextualEditing` |
-| Edit vs Preview tab | `context.pageState.previewMode` at render; live changes through the selection hook | `useUniformContextualEditingState().previewMode` |
-| Selected component | **No SDK hook.** A small channel hook: [interactive-components.md](references/interactive-components.md#app-router-selection-hook) | `useUniformContextualEditingState({ global }).selectedComponentReference` |
+| **In Canvas**, Edit or Preview tab. Gate reachability on it: dropping `inert` and `pointer-events: none` | `context.isContextualEditing` | `useUniformContextualEditingState().isContextualEditing` |
+| **Edit tab** only. Gate anything that changes the look on it: placeholders, forced-open panels, stopped motion, editor-only controls | `context.pageState.previewMode === "editor"` | `useUniformContextualEditingState().previewMode === "editor"` |
+| Selected component | [Channel hook](references/interactive-components.md#app-router-selection-hook) | `useUniformContextualEditingState({ global: true }).selectedComponentReference` |
 | Empty-slot placeholder | `resolveEmptyPlaceholder` on `<UniformComposition>` and `<UniformPlayground>` | `emptyPlaceholder` on each `<UniformSlot>` |
-| Default text placeholder | None; pass `placeholder` on each `UniformText` | `contextualEditingDefaultPlaceholder` on `<UniformComposition>` |
-| Is this slot item a placeholder? | `isComponentPlaceholderId` from `@uniformdev/canvas` | Same |
-| Rendered in the playground | `context.matchedRoute === "composition"`, not `context.type` | The playground route itself |
-| Editor UI that must receive clicks | Inside an element with `IS_RENDERED_BY_UNIFORM_ATTRIBUTE` from `@uniformdev/canvas` | Same |
+| Default text placeholder | `placeholder` on each `UniformText` | `contextualEditingDefaultPlaceholder` on `<UniformComposition>` and `<UniformPlayground>` |
 
-Passing the flag to client components, timing on each SDK, and confirming these shapes against the
-installed version: [detecting-the-editor.md](references/detecting-the-editor.md).
+The live site must look the same after the review: every editor affordance sits behind one of the
+first two gates. The only differences visitors may get are removed leaks (a `contentEditable`
+label, a raw value read to screen readers) and markup they cannot see, such as hidden items that
+stay mounted. The Preview tab shows authors the page as visitors see it, so a look-changing
+affordance gated on "in Canvas" alone is a finding (F3).
+
+Reading the signals, passing them to client components and checking them against the installed
+version: [detecting-the-editor.md](references/detecting-the-editor.md).
 
 ## The review workflow
 
-### 1. Scope
-
-- **Which SDK**: the column of the table above that applies.
-- **What to review**: every component type the resolver maps (`resolveComponent`, or the
-  component registry on the Page Router), the stylesheets that lay out their slots, and the
-  composition and playground routes.
-- **What exists already**: editor gates, a placeholder component, an empty-slot resolver, a
-  playground frame. Fixes reuse these rather than adding a parallel set.
-- **What the user asked for**: a review only, a review then a choice, or "fix everything". It
-  decides step 4.
-
-### 2. Review
-
-Run the checks in [review-checks.md](references/review-checks.md) component by component. Each
-check's grep finds candidates; read every candidate before recording it. Record a finding only when
-you can say what the author experiences, and mark the ones that change what visitors get today (a
-hand-built editing marker, a visually hidden raw value) as live-site bugs.
-
-### 3. Report
-
-Group the findings by category, then fix type, then component, and list the components with no
-findings so the user can see they were reviewed. Template and rules:
-[review-and-selection.md](references/review-and-selection.md#the-report).
-
-### 4. Choose
-
-Offer the **fix types**, not individual findings, with the recommended ones pre-selected. Skip the
-question when the user already said to apply everything; stop after the report when they asked for
-a review only. Question shapes and the text fallback:
-[review-and-selection.md](references/review-and-selection.md#asking-which-fixes-to-apply).
-
-### 5. Apply
-
-Foundations the selection needs first, then each selected fix type with the patterns in the
-references below. Unselected findings stay untouched:
-[review-and-selection.md](references/review-and-selection.md#applying-the-selection).
-
-### 6. Verify and report
-
-1. Typecheck or build.
-2. Render a published page before and after the fixes and diff the HTML. Nothing an editor gate
-   controls may appear in it: [review-checks.md](references/review-checks.md#production-is-unchanged).
-3. Check the Edit tab, the Preview tab and a pattern in the playground with the
-   [Canvas checklist](references/review-checks.md#check-in-canvas). If you cannot open Canvas
-   yourself, say so and hand the user the checklist.
-4. Close with what was applied, what was left open, and what still needs a human in Canvas.
+1. **Scope.** Find the SDK, the component types the resolver maps, the stylesheets that lay out
+   their slots, and the composition and playground routes. Note the editor helpers the project
+   already has, and whether the user wants a review only, a review and a choice, or everything
+   fixed. If the app can render a published page, save its HTML now for step 6.
+2. **Review.** Run every check in [review-checks.md](references/review-checks.md) over the whole
+   app, stylesheets included (S6 and I6 usually live in CSS), then read each hit.
+3. **Report** by category, fix type and component:
+   [review-and-selection.md](references/review-and-selection.md#the-report).
+4. **Choose.** Ask which fix types to apply, with the recommended ones marked, unless the user has
+   already decided: [review-and-selection.md](references/review-and-selection.md#asking-which-fixes-to-apply).
+5. **Apply** the foundations the selection needs, then the selected fix types and nothing else:
+   [review-and-selection.md](references/review-and-selection.md#applying-the-selection).
+6. **Verify.** Typecheck or build, compare the published page with the HTML from step 1
+   ([review-checks.md](references/review-checks.md#the-live-site-looks-the-same)), run the
+   [Canvas checklist](references/review-checks.md#check-in-canvas), and write the
+   [closing report](references/review-and-selection.md#the-closing-report).
 
 ## Building a new component
 
-Use the [new-component checklist](references/review-checks.md#checklist-for-a-new-component). A
-carousel that cannot show slide 3 costs more to retrofit than to build right.
+Work through the [new-component checklist](references/review-checks.md#checklist-for-a-new-component).
 
 ## Decision rules
 
-- **Hide an empty component only when every authorable part is empty, and never in the Edit
-  tab.** A button with an icon and no label is not empty; a button with a link and no label is.
+- **Hide an empty component only when nothing a visitor would see is set, and never in the Edit
+  tab.** In a new guard, a button with an icon and no label still renders; one with only a link
+  does not. An existing guard keeps its live-site condition and gains the Edit-tab gate; if it
+  hides something a visitor would see, report that under *Needs a manual check*.
   → [empty-states.md](references/empty-states.md#hide-when-empty-guards)
-- **Placeholders take the space the real content would**: media at its size or aspect ratio, a
-  slot at the height of a typical child, a horizontal slot with a width as well.
+- **Placeholders take the space the real content will take**: media at its size or aspect ratio,
+  a slot at the height of a typical child, a slot in a row with a width as well. Turn a slot
+  placeholder off only when the slot is optional and the layout has no room for it.
   → [empty-states.md](references/empty-states.md#image-and-video-placeholders),
   [slot-placeholders.md](references/slot-placeholders.md#sizing)
-- **Turn a slot placeholder off only when the slot is optional and the layout has no room for
-  it.** → [slot-placeholders.md](references/slot-placeholders.md#sizing)
-- **Keep hidden content mounted and hide it with CSS.** An unmounted panel, tab or slide has no
+- **Keep hidden items mounted and hide them with CSS.** An unmounted panel, tab or slide has no
   editor markers, so selecting it in the component tree does nothing.
   → [interactive-components.md](references/interactive-components.md#keep-every-item-mounted)
 - **For content behind interaction, use the lightest pattern that makes every item reachable:**
 
   | Pattern | Use for | Cost |
   |---|---|---|
-  | Force open in the Edit tab | Accordions, FAQs, tooltips, hotspots, disclosures: anything that still reads with every panel open | The Edit tab is taller than production |
-  | Follow the Canvas selection | Carousels, tabs, mega-menu categories: anything where only one item can be visible | Needs the selection signal; the App Router needs a small hook |
-  | Editor-only controls | Authors who work on the page rather than in the component tree; components with no selection support | Extra UI in the Edit tab, marked so Canvas lets its clicks through |
+  | Force open in the Edit tab | Accordions, FAQs, disclosures, read-more blocks | The Edit tab is taller than the live page |
+  | Follow the Canvas selection | Carousels, tabs, mega-menu categories, tooltips, hotspots, modals | On the App Router, a small hook on an internal Canvas message; name that dependency when offering the fix |
+  | Editor-only controls | Components without selection support; authors who work on the page rather than in the component tree | Extra UI in the Edit tab |
   | Stop motion in the Edit tab | Autoplay, auto-advancing timers, countdown redirects, scroll-driven animation | None |
 
-  Most interactive components need two. A carousel needs *stop motion* and *follow selection*,
-  plus *editor controls* when it has no visible arrows. An accordion needs *force open* or
-  *follow selection*. → [interactive-components.md](references/interactive-components.md)
+  A carousel needs stop motion and follow selection, plus editor controls for authors who work on
+  the page.
+  → [interactive-components.md](references/interactive-components.md)
 - **Frame patterns in the playground, and check breakpoints with Canvas preview viewports.** The
   frame's width selector narrows a container, so media queries do not respond to it.
   → [playground-tools.md](references/playground-tools.md)
 
 ## Silent failures to check for
 
-Each is explained once, in the reference it links to.
-
-- In the Edit tab Canvas turns every click into a selection. A component's own arrows and toggles
-  do nothing, and editor-only controls work only inside `IS_RENDERED_BY_UNIFORM_ATTRIBUTE`, which
-  must never wrap authored content.
-  [interactive-components.md](references/interactive-components.md#in-the-edit-tab-clicks-select)
+- While editing, the SDK wraps each slot child in `<template>` markers. `:first-child`,
+  `space-y-*`, `divide-*` and `> * + *` count them, so spacing shifts in the editor only. Space
+  with `gap`. [slot-placeholders.md](references/slot-placeholders.md#spacing-that-survives-the-editor-markers)
 - Empty slots hold a placeholder item while editing, so `items.length` is at least 1. Filter with
   `isComponentPlaceholderId`. [slot-placeholders.md](references/slot-placeholders.md#counting-and-branching-on-slot-contents)
-- Canvas wraps slot children in `<template>` markers, which `:first-child`, `space-y-*`,
-  `divide-*` and `> * + *` count as siblings, so spacing shifts in the editor only. Space with
-  `gap`. [slot-placeholders.md](references/slot-placeholders.md#spacing-that-survives-the-editor-markers)
-- `UniformText` inside a value check, or given a missing parameter, renders no edit target. Its
-  `render` prop is not applied while editing.
+- `UniformText` inside a value check, or given a missing parameter, renders no edit target.
   [empty-states.md](references/empty-states.md#uniformtext-placeholders)
-- The App Router `UniformRichText` never shows its placeholder in Canvas; the Page Router one shows
-  it only for an empty rich-text value.
+- The App Router `UniformRichText` never shows its placeholder in Canvas.
   [empty-states.md](references/empty-states.md#uniformrichtext-placeholders)
+- In the Edit tab Canvas turns clicks into selections. Editor-only UI receives clicks only inside
+  `IS_RENDERED_BY_UNIFORM_ATTRIBUTE`, which must never wrap authored content.
+  [interactive-components.md](references/interactive-components.md#in-the-edit-tab-clicks-select)
 - A hand-built `_contextualEditing` makes text `contentEditable` for every visitor.
   [interactive-components.md](references/interactive-components.md#tabs-whose-labels-come-from-the-children)
-- An `sr-only` `UniformText` reads raw values to screen readers in production.
+- A visually hidden (`sr-only`) `UniformText` reads raw values to screen readers on the live site.
   [empty-states.md](references/empty-states.md#values-that-are-not-visible)
-- One instance rendered twice, such as desktop and mobile copies, gives Canvas two editable
-  regions that fight each other.
-  [interactive-components.md](references/interactive-components.md#rendering-one-instance-twice)
-- Editor and draft renders cached behind `'use cache'`.
-  [detecting-the-editor.md](references/detecting-the-editor.md#caching)
-- A "component not found" fallback that renders on the live site.
-  [empty-states.md](references/empty-states.md#component-not-found)
 
 ## What does not exist
 
 - **No `useIsEditMode`, `<EditorOnly>` or `withPlaceholder`** in any Uniform package. Read the
-  signal from the table above and branch on it.
-- **No playground decorators on the App Router.** `decorators` exists only on the Page Router's
-  `UniformPlayground`, and is marked experimental there.
-  [playground-tools.md](references/playground-tools.md#app-router)
-- **No `emptyPlaceholder` on the App Router `UniformSlot`.** The App Router resolves every
-  placeholder centrally through `resolveEmptyPlaceholder`.
-  [slot-placeholders.md](references/slot-placeholders.md#app-router-one-resolver-for-the-project)
+  signals above and branch on them.
+- **No `emptyPlaceholder` on the App Router `UniformSlot`.** Empty slots go through
+  `resolveEmptyPlaceholder`. [slot-placeholders.md](references/slot-placeholders.md)
 - **No selection hook in the App Router SDK.** `useUniformContextualEditingState` from
-  `canvas-react` imports and type-checks there, then reports `isContextualEditing: false` for ever.
-  [interactive-components.md](references/interactive-components.md#app-router-selection-hook)
-
-## Framework specifics
-
-- **Text, rich text, slot and asset APIs**: the App Router skill's
-  [components.md](../uniform-nextjs-app-router/references/components.md) and the Page Router
-  skill's [components.md](../uniform-nextjs-page-router/references/components.md).
-- **Flyouts and mega menus** (`inert`, focus and keyboard handling): the navigation skill's
-  [interaction-and-a11y.md](../uniform-navigation/references/interaction-and-a11y.md).
-- **Slot placeholders in the content model**: the `uniform-experience-modeling` skill's slot
-  guidance.
+  `canvas-react` reads a context the App Router never provides, so it reports
+  `isContextualEditing: false` and no selection. Follow the selection with the
+  [channel hook](references/interactive-components.md#app-router-selection-hook) instead.
+- **No playground decorators on the App Router.** `decorators` exists only on the Page Router's
+  `UniformPlayground`, and is experimental there.
+  [playground-tools.md](references/playground-tools.md#app-router)
 
 ## Resources
 
 - [Detecting the editor](references/detecting-the-editor.md): both signals on both SDKs, passing
-  the flag to client components, tab changes, caching, verifying against the install
-- [Empty states](references/empty-states.md): hide-when-empty guards, image and video
-  placeholders, `UniformText` and `UniformRichText` placeholders, non-visual values, links
-- [Slot placeholders](references/slot-placeholders.md): `resolveEmptyPlaceholder` versus
-  `emptyPlaceholder`, sizing, labelled placeholders, marker-safe spacing, wrapping slot items
-- [Interactive components](references/interactive-components.md): carousels, tabs, accordions,
-  modals, tooltips; stopping motion, keeping items mounted, editor controls, following selection
+  them to client components, tab changes, checking the installed version
+- [Empty states](references/empty-states.md): hide-when-empty guards, media placeholders,
+  `UniformText` and `UniformRichText` placeholders, values that are not visible, links
+- [Slot placeholders](references/slot-placeholders.md): `resolveEmptyPlaceholder` and
+  `emptyPlaceholder`, sizing, counting slot items, spacing around the markers, wrapping slot items
+- [Interactive components](references/interactive-components.md): clicks in the Edit tab, keeping
+  items mounted, stopping motion, forcing open, following the selection, editor-only controls
 - [Playground tools](references/playground-tools.md): the playground-only pattern frame on both
-  SDKs, widths versus preview viewports, detecting the playground
-- [Review checks](references/review-checks.md): the check catalog with IDs and fix types, the
-  greps that find each gap, the production diff, the Canvas checklist, the new-component checklist
-- [Reporting and selection](references/review-and-selection.md): the findings report, the
-  checkbox question and its text fallback, when not to ask, applying the selection
+  SDKs, frame widths versus preview viewports
+- [Review checks](references/review-checks.md): the check catalog and fix types, the live-site
+  comparison, the Canvas checklist, the new-component checklist
+- [Reporting and selection](references/review-and-selection.md): the findings report, asking which
+  fixes to apply, applying the selection, the closing report

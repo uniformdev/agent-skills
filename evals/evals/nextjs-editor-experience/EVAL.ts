@@ -78,15 +78,6 @@ const usesEditorSignal = (text: string) => references(text, ANY_EDITOR_SIGNAL);
 // JSX elements matched whole (props span lines), from the tag to its self-closing end.
 const elements = (text: string, tag: string) => text.match(new RegExp(`<${tag}\\b[\\s\\S]*?\\/>`, 'g')) ?? [];
 
-// The conditions of `if (…) return null` guards, with any local const they name expanded one level
-// (`const hasIcon = …`), so a guard split across declarations still reads as one condition.
-const nullGuards = (text: string) =>
-  [...text.matchAll(/if\s*\(([\s\S]*?)\)\s*\{?\s*return\s+null/g)]
-    .map(([, cond]) =>
-      [cond, ...[...cond.matchAll(/\b([A-Za-z_]\w*)\b/g)].map(([, n]) => text.match(new RegExp(`const\\s+${n}\\s*=([^;\\n]*)`))?.[1] ?? '')].join(' ')
-    )
-    .join('\n');
-
 // Placeholders and hints change the look, so they belong to the Edit tab: isContextualEditing is true
 // in the Preview tab too, where authors check the page as visitors see it.
 const PREVIEW_TAB_LEAK = 'isContextualEditing alone is also true in the Preview tab; gate on pageState.previewMode === "editor"';
@@ -97,7 +88,6 @@ test('empty Button and Image stay in the Edit tab', () => {
     /if\s*\(\s*!\s*label\?\.value\s*\)\s*return\s+null/
   );
   expect(button, `the empty button shows only in the Edit tab — ${PREVIEW_TAB_LEAK}`).toSatisfy(usesEditTab);
-  expect(nullGuards(button), 'a button with an icon and no label is not empty; the live site must keep it').toMatch(/icon/i);
 
   const image = componentCode(/^Image/);
   expect(image, 'an empty image leaves the author nothing to click').not.toMatch(
@@ -130,9 +120,10 @@ test('empty slots get placeholders through resolveEmptyPlaceholder', () => {
 
 test('Section slot logic survives the editor', () => {
   const src = code();
-  expect(src, 'a hand-rolled prefix test misses the bare "placeholder" id').not.toMatch(
-    /(startsWith|includes)\(\s*['"`]placeholder/
-  );
+  expect(
+    src,
+    'use isComponentPlaceholderId, the SDK predicate; a hand-rolled test such as startsWith("placeholder_") misses the bare "placeholder" id'
+  ).not.toMatch(/(startsWith|includes)\(\s*['"`]placeholder/);
   expect(src).toContain('isComponentPlaceholderId');
   expect(
     componentCode(/^Section/),
@@ -140,7 +131,7 @@ test('Section slot logic survives the editor', () => {
   ).toSatisfy(usesEditTab);
   expect(
     cssText(),
-    'Canvas wraps slot children in <template> markers; `> * + *` counts them — use gap'
+    'while editing, the SDK wraps slot children in <template> markers; `> * + *` counts them — use gap'
   ).not.toMatch(/>\s*\*\s*\+\s*\*/);
 });
 
@@ -243,10 +234,10 @@ test('production output is unchanged', async () => {
   await expect(environment).toSatisfyCriterion(
     'Every editor-only affordance the agent added — placeholders for empty buttons, images, rich ' +
       'text and slots, forced-open or selection-driven panels, editor controls, stopped autoplay — ' +
-      'is behind a check of the Uniform editor state, so that a published page renders exactly what ' +
-      'it rendered before: no placeholder text, no editor controls, no always-open panels, and ' +
-      'autoplay still running. Visible behaviour for visitors has not been changed in any other way, ' +
-      'except for removing editor artifacts that had leaked to the live site (such as a ' +
-      'contentEditable label or a developer "not found" message), which is a fix, not a regression.'
+      'is behind a check of the Uniform editor state, so that a published page looks the same as ' +
+      'before: no placeholder text, no editor controls, no always-open panels, and autoplay still ' +
+      'running. Visible behaviour for visitors has not been changed in any other way. Removing an ' +
+      'editor artifact that had leaked to the live site, such as a contentEditable label, is a fix, ' +
+      'not a regression.'
   );
 });

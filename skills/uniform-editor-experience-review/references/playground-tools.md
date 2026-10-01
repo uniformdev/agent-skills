@@ -1,23 +1,21 @@
 # Playground tools
 
 Patterns are edited in the **playground**, the route Canvas opens a pattern in, with no page
-around it. A bare pattern sits against a blank page at whatever width the preview happens to be,
-with nothing saying what it is. A small frame, rendered only in the playground, fixes that:
+around it. A small frame rendered only on that route gives each pattern:
 
-- the pattern's component type, so the author knows what they are looking at;
-- a container width that suits the component: a card at card width, not stretched across 1440px;
+- its component type, so the author knows what they are looking at;
+- a container width that suits it: a card at card width, not stretched across 1440px;
 - a width selector, to see the pattern in narrower and wider containers;
 - optionally a background or theme switch, for components meant to sit on dark sections.
 
-The frame is authoring UI. It is never rendered in a composition, and never on the live site.
+The frame wraps the playground route only; compositions never render it.
 
 ## Widths are not breakpoints
 
 A width selector narrows a `<div>` inside the preview. The preview iframe itself keeps its
 width, so **media queries do not change**: `md:` and `lg:` classes and `@media` rules respond to
-the iframe, not to the frame. Only container queries (`@container`) respond to the selector.
-
-So be precise about what each tool is for, and say it in the frame's hint text:
+the iframe, not to the frame. Only container queries (`@container`) respond to the selector. Say
+which tool is for what in the frame's hint text:
 
 | To check | Use |
 |---|---|
@@ -30,12 +28,9 @@ design system's breakpoints rather than the defaults. Read them with
 is the user's call: in the project settings, or through `uniform canvas preview-viewport` /
 `uniform sync` (the `previewViewport` entity) if the project keeps them in source control.
 
-## Making the frame's controls clickable
-
-In the Edit tab the frame's buttons receive clicks only inside an element carrying
-`IS_RENDERED_BY_UNIFORM_ATTRIBUTE` (`data-is-rendered-by-uniform`, from `@uniformdev/canvas`). Put
-it on the frame's **chrome** (the control row, the label, the hint), never on an ancestor of the
-pattern. Why: [interactive-components.md](interactive-components.md#in-the-edit-tab-clicks-select).
+The frame's buttons receive clicks in the Edit tab only inside `IS_RENDERED_BY_UNIFORM_ATTRIBUTE`.
+Put it on the frame's chrome (the control row, the label, the hint), never on an ancestor of the
+pattern: [interactive-components.md](interactive-components.md#in-the-edit-tab-clicks-select).
 
 ## App Router
 
@@ -61,9 +56,8 @@ import { useState, type ReactNode } from "react";
 import { IS_RENDERED_BY_UNIFORM_ATTRIBUTE } from "@uniformdev/canvas";
 import { DEFAULT_WIDTH, WIDTHS, type Width } from "./widths";
 
-// Clicks in Canvas's Edit tab become component selections unless they land inside an element
-// carrying this attribute. Put it on the frame's own controls — never on the element that holds
-// the pattern, or the pattern stops being selectable.
+// Canvas lets Edit-tab clicks through only inside this attribute. Keep it on the frame's own
+// controls, never on the element that holds the pattern.
 const chrome = { [IS_RENDERED_BY_UNIFORM_ATTRIBUTE]: "" };
 
 export function PatternFrame({ componentType, children }: { componentType?: string; children: ReactNode }) {
@@ -91,55 +85,54 @@ export function PatternFrame({ componentType, children }: { componentType?: stri
 }
 ```
 
+In the playground page, keep everything the page already has (its other exports and every prop on
+`UniformPlayground`, `resolveEmptyPlaceholder` included) and add the frame around it:
+
 ```tsx
 // app/playground/[code]/page.tsx
-import { PlaygroundParameters, resolvePlaygroundRoute, UniformPlayground } from "@uniformdev/next-app-router";
+import { resolvePlaygroundRoute } from "@uniformdev/next-app-router";
 import { PatternFrame } from "@/components/playground/PatternFrame";
-import { resolveComponent } from "@/components/resolveComponent";
 
-export default async function PlaygroundPage({ params }: PlaygroundParameters) {
-  const { code } = await params;
-  // One extra fetch, only to label the frame with the pattern's root component type.
-  const { route } = await resolvePlaygroundRoute({ code });
-  const componentType = route?.compositionApiResponse.composition.type;
+// …inside the existing page component, after `const { code } = await params;`
+// One extra fetch, only to label the frame with the pattern's root component type.
+const { route } = await resolvePlaygroundRoute({ code });
+const componentType = route?.compositionApiResponse.composition.type;
 
-  return (
-    <PatternFrame componentType={componentType}>
-      <UniformPlayground code={code} resolveRoute={resolvePlaygroundRoute} resolveComponent={resolveComponent} />
-    </PatternFrame>
-  );
-}
+return (
+  <PatternFrame componentType={componentType}>
+    <UniformPlayground code={code} /* …the props the page already passes */ />
+  </PatternFrame>
+);
 ```
 
-- **Keep the page's existing props** on `UniformPlayground` — `resolveEmptyPlaceholder`,
-  `compositionCache`, a `Suspense` boundary — and add the frame around it.
-- **The type costs a fetch.** The playground's `code` holds the pattern id, not its type;
-  `resolvePlaygroundRoute` fetches the pattern (uncached) and returns `route: undefined` rather
-  than throwing when it cannot. If the label is not worth the request, drop `componentType` and the
-  per-type default.
+- **The type costs a fetch.** `UniformPlayground` resolves the pattern itself and ignores a
+  `resolveRoute` prop, so the frame makes its own call. `resolvePlaygroundRoute` fetches with
+  `cache: 'no-cache'` and returns `route: undefined` when the fetch fails or finds nothing; it
+  throws only if `code` cannot be decoded. If the label is not worth the request, drop
+  `componentType` and the per-type default.
 - **Selected width survives edits.** Canvas refreshes the route after each change; the frame is the
   same client component in the same place, so its state is kept.
-- `UniformPlayground` renders only in draft mode, so outside Canvas the page shows the SDK's
-  message inside the frame.
+- The SDK serves the playground only in draft mode, so visitors do not reach the frame.
 
 ## Page Router
 
 `@uniformdev/canvas-react`'s `UniformPlayground` takes `decorators` — components that wrap the
 rendered pattern and receive its root instance as `data`.
 
-> **Experimental.** The `decorators` prop is marked `@deprecated` with "not stable yet and might be
-> changed or removed in a minor release". That marks it as unstable, not as removed: it is the
-> SDK's supported way to decorate the playground today. Keep the decorator in one file so a change
-> is a one-file fix.
+> **Experimental.** The prop's JSDoc reads: "@deprecated This feature is not stable yet and might
+> be changed or removed in a minor release. Do not use it in production environments." It is
+> still the SDK's only way to decorate the playground. Keep the decorator in one file so a change
+> is a one-file fix, and name the dependency when offering the frame
+> ([review-and-selection.md](review-and-selection.md#asking-which-fixes-to-apply)).
+
+The frame body is the App Router `PatternFrame` above, saved as `FrameBody.tsx` with the same
+`widths.ts`. The decorator only reads the pattern's type and keys the frame by it:
 
 ```tsx
 // components/playground/PatternFrame.tsx
-import { useState, type ReactNode } from "react";
-import { EMPTY_COMPOSITION, IS_RENDERED_BY_UNIFORM_ATTRIBUTE } from "@uniformdev/canvas";
+import { EMPTY_COMPOSITION } from "@uniformdev/canvas";
 import type { UniformPlaygroundDecorator } from "@uniformdev/canvas-react";
-import { DEFAULT_WIDTH, WIDTHS, type Width } from "./widths";
-
-const chrome = { [IS_RENDERED_BY_UNIFORM_ATTRIBUTE]: "" };
+import { FrameBody } from "./FrameBody";
 
 // The playground first renders with a stand-in composition while Canvas sends the pattern.
 // Keying the frame by type re-runs its initial state once the real type arrives.
@@ -151,25 +144,6 @@ export const PatternFrame: UniformPlaygroundDecorator = ({ children, data }) => 
     </FrameBody>
   );
 };
-
-function FrameBody({ componentType, children }: { componentType?: string; children: ReactNode }) {
-  const [width, setWidth] = useState<Width>((componentType && DEFAULT_WIDTH[componentType]) || "Full");
-  return (
-    <div style={{ padding: 32 }}>
-      <div {...chrome} style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-        {(Object.keys(WIDTHS) as Width[]).map((w) => (
-          <button key={w} type="button" aria-pressed={w === width} onClick={() => setWidth(w)}>
-            {w}
-          </button>
-        ))}
-        <span>
-          {componentType ?? "pattern"} · {WIDTHS[width]}
-        </span>
-      </div>
-      <div style={{ maxWidth: WIDTHS[width], margin: "0 auto" }}>{children}</div>
-    </div>
-  );
-}
 ```
 
 ```tsx
@@ -178,6 +152,7 @@ import { UniformPlayground } from "@uniformdev/canvas-react";
 import { PatternFrame } from "@/components/playground/PatternFrame";
 
 export default function PlaygroundPage() {
+  // Also pass the project's contextualEditingDefaultPlaceholder here if <UniformComposition> sets one.
   return <UniformPlayground decorators={[PatternFrame]} behaviorTracking="onLoad" />;
 }
 ```
@@ -186,19 +161,5 @@ export default function PlaygroundPage() {
   (`EMPTY_COMPOSITION`, type `"_empty_composition_type"`) before Canvas sends the pattern. A frame
   that reads `data.type` into `useState` locks in the stand-in's fallback and never applies the
   per-type width; keying the stateful part by type fixes it. Guard the label the same way.
-- **Several decorators**: the first in the array is the innermost wrapper.
-- **Decorators always render** — also on a direct visit to the playground outside Canvas. They
-  are "playground only" because only the playground route uses them.
-
-## Telling a component it is in the playground
-
-Rarely needed — the frame lives outside the components — but some components have page-only
-behaviour (breadcrumbs, a sticky header offset) that makes no sense in a pattern.
-
-| SDK | Signal |
-|---|---|
-| App Router | `context.matchedRoute === "composition"`. On a real route it is the project map path and starts with `/`. **Not** `context.type`: that is the root component's type, and a composition pattern's root is `page` |
-| Page Router | The playground route itself — pass a prop or context from the playground page. The composition context under the playground has no `matchedRoute`, but that is incidental; do not branch on it |
-
-A composition with no project map node is also previewed through the playground, so treat the
-signal as "rendered without a page around it", not strictly "this is a pattern".
+- **Decorators always render**, also on a direct visit to the playground outside Canvas. They are
+  "playground only" because only the playground route uses them.

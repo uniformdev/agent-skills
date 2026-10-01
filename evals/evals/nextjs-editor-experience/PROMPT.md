@@ -4,7 +4,7 @@ the page move while they are trying to edit. In the pattern editor it is hard to
 component you are looking at, or how it looks at other widths.
 
 Go through the components in this project and improve the authoring experience in the editor.
-Don't stop to ask which fixes to make — apply everything you would recommend. Visitors on the
-live site must see exactly what they see today.
+Don't stop to ask which fixes to make — apply everything you would recommend. Nothing you add for
+editors may show up for visitors, and the live site must look the same as it does today.
 
 Follow the conventions already used in this project and keep the existing components working.

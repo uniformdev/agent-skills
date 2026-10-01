@@ -3,11 +3,13 @@
 ## What an empty slot is in the editor
 
 While editing, Canvas puts a **placeholder item** into every empty slot: a component instance
-whose `_id` starts with `placeholder`. The SDK renders something for it, wraps it in the same
-markers as any other slot child, and Canvas draws its drop target over whatever you rendered.
+whose `_id` starts with `placeholder`. The SDK renders something for it and wraps it in the same
+markers as any other slot child. In the Edit tab, Canvas hides what you rendered and draws its own
+drop target over its box, with a minimum size and a label naming the parent component and the
+slot.
 
-So the drop target is exactly as big as your placeholder. A slot whose placeholder renders
-nothing, or a zero-height `<div>`, is a slot the author cannot drop into from the page.
+So the placeholder only has to reserve the space the first item will take. With no box at all
+there is no drop target, and a box with no height gets a target drawn over the content below it.
 
 The two SDKs put the placeholder in different places:
 
@@ -16,10 +18,8 @@ The two SDKs put the placeholder in different places:
 | Where | `resolveEmptyPlaceholder` on `<UniformComposition>` **and** `<UniformPlayground>` — once, centrally | `emptyPlaceholder` on each `<UniformSlot>` |
 | Input | `{ parentComponent, component, slotName, slotIndex }` | — (you are already in the parent) |
 | Returns | `{ component: ComponentType \| null }` | A React node, or `null` |
-| Not provided | Placeholder items go through `resolveComponent` like any other component, so whatever it returns for an unmapped type renders in every empty slot | The SDK's default rendering |
+| Not provided | Placeholder items go through `resolveComponent` like any other component, so whatever it returns for an unmapped type renders in every empty slot | Placeholder items go through `resolveRenderer`, and whatever it returns renders in every empty slot |
 | Turned off | `{ component: null }` | `emptyPlaceholder={null}` |
-
-There is no `emptyPlaceholder` prop on the App Router `UniformSlot`.
 
 ## App Router: one resolver for the project
 
@@ -62,9 +62,8 @@ export const resolveEmptyPlaceholder: ResolveEmptyPlaceholder = ({ parentCompone
 - **Variants.** `parentComponent` is the full instance, so `parentComponent.variant` is there when
   a slot's shape depends on the parent's variant (a media slot that only exists in the
   two-column variant).
-- **The placeholder component receives the usual component props**, including `context`, so it
-  can use the Edit-tab gate for labels (below).
-- Use the project's styling system; the inline styles are only to keep the example neutral.
+- **Only the size matters.** Canvas hides the rendered element in the Edit tab, so use the
+  project's styling system for dimensions and skip colours, borders and text.
 
 ## Page Router: per slot
 
@@ -74,7 +73,9 @@ export const resolveEmptyPlaceholder: ResolveEmptyPlaceholder = ({ parentCompone
 <UniformSlot name="media" emptyPlaceholder={null} />
 ```
 
-The SDK renders `emptyPlaceholder` only while editing; visitors never see it.
+The SDK renders `emptyPlaceholder` only while editing, and only in place of what the resolver
+rendered for the placeholder item: if `resolveRenderer` returns nothing for it, the slot gets no
+drop target at all.
 
 ## Sizing
 
@@ -87,21 +88,14 @@ The SDK renders `emptyPlaceholder` only while editing; visitors never see it.
 | Media slot | The media's aspect ratio |
 | Optional slot with no room in this layout | Off (`null`). The author then adds to it from the component tree, with no drop target on the page |
 
-## Labelled placeholders
-
-A size-only placeholder relies on Canvas's own drop-target UI. When a slot's purpose is not
-obvious from its position (a row of actions under a form, a footer column), a short label helps:
-a dashed outline and muted text such as "Add buttons or links".
-
-Keep labels short, and keep them out of the Preview tab: on the App Router, render the label only
-when `isEditTab(context)`; on the Page Router, only when the hook's `previewMode === "editor"`.
-
 ## Counting and branching on slot contents
 
 Because the placeholder is a real item, anything that counts or tests a slot sees it:
 
-- **Filter before counting.** `isComponentPlaceholderId` from `@uniformdev/canvas`, never a
-  hand-rolled prefix test. The full recipe is in the navigation skill's
+- **Filter before counting** with `isComponentPlaceholderId` from `@uniformdev/canvas`, the
+  predicate the SDKs use themselves. It handles an item without an `_id` and matches both id
+  forms, `placeholder` and `placeholder_…`; a hand-rolled `startsWith("placeholder_")` misses the
+  first. The full recipe is in the navigation skill's
   [slot-data-access.md](../../uniform-navigation/references/slot-data-access.md#technique-4--detect-emptiness-without-counting).
 - **A layout that hides an empty region** (an aside column, an actions bar) must still show it in
   the Edit tab, or the author cannot drop the first item in: `hasContent || isEditTab(context)`.
@@ -110,7 +104,7 @@ Because the placeholder is a real item, anything that counts or tests a slot see
 
 ## Spacing that survives the editor markers
 
-While editing, every slot child is wrapped in a pair of `<template>` elements (start and end
+While editing, the SDK wraps every slot child in a pair of `<template>` elements (start and end
 markers). They render nothing, but CSS sibling logic counts them:
 
 | Breaks in the editor | Why |

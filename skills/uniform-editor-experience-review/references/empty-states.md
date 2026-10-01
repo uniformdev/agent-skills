@@ -1,16 +1,12 @@
 # Empty states
 
-What a component renders when an author has not filled it in yet. Every component is in this
-state the moment it is dropped onto the page.
-
-The gates used below (`isEditTab`, `isInCanvas`) are defined in
-[detecting-the-editor.md](detecting-the-editor.md).
+What a component renders before an author fills it in. The gates used below (`isEditTab`,
+`isInCanvas`) are defined in [detecting-the-editor.md](detecting-the-editor.md).
 
 ## Hide-when-empty guards
 
-A component that renders nothing in production when it is empty must still render in the Edit
-tab, or the author can never fill it: they drop a button in, it vanishes, and there is nothing to
-click.
+A component that renders nothing on the live site when it is empty must still render in the Edit
+tab, or the author has nothing to select after dropping it in.
 
 ```tsx
 // App Router
@@ -39,6 +35,10 @@ function Button({ label, icon }: ButtonProps) {
   "no label *and* no link" ships an empty `<a>` to production.
 - A slot's items count only after filtering out editor placeholder items:
   [slot-placeholders.md](slot-placeholders.md#counting-and-branching-on-slot-contents).
+- **An existing guard keeps its live-site condition.** Add the Edit-tab gate and change nothing
+  else, so visitors get what they got before. If the condition also hides something a visitor
+  would see, such as an icon-only button, report it under *Needs a manual check* instead of
+  widening it.
 
 **Optional text inside a component** needs the same treatment, one level down. `UniformText`
 renders its tag even when the value is empty, so a `<p className="mt-4">` around an empty
@@ -53,16 +53,15 @@ alone, which removes the edit target:
 
 ## Image and video placeholders
 
-There is no Uniform image or asset component. The project renders assets itself, so it renders
-the empty state itself too. When the asset parameter is empty:
+The SDKs ship no image or asset component, so the empty state goes into whatever renders the
+project's media. When the asset parameter is empty:
 
 - **Production:** render nothing. Never a broken `<img src="">`, never an empty sized box.
 - **Edit tab:** render a placeholder that occupies the space the media will. Clicking it selects
   the component so the author can pick an asset in the parameter panel.
 
-Size it from the same source the real media uses — the component's width/height parameters, or
-the aspect ratio the layout gives the media slot. A placeholder that is too small is hard to hit;
-one of a different shape makes the author design around a layout that will not exist.
+Size it from the same source the real media uses: the component's width/height parameters, or the
+aspect ratio the layout gives the media slot.
 
 ```tsx
 // App Router — raw asset item; the src/alt handling is in the App Router skill's components.md
@@ -76,38 +75,18 @@ if (!url) {
 ```
 
 ```tsx
-export function MediaPlaceholder({
-  label,
-  width,
-  height,
-  aspectRatio = "16 / 9",
-}: {
-  label: string;
-  width?: number;
-  height?: number;
-  aspectRatio?: string;
-}) {
-  return (
-    <div
-      style={{
-        width: width ?? "100%",
-        height,
-        aspectRatio: height ? undefined : aspectRatio,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        border: "1px dashed currentColor",
-        opacity: 0.6,
-      }}
-    >
-      {label}
-    </div>
-  );
-}
+type MediaPlaceholderProps = { label: string; width?: number; height?: number; aspectRatio?: string };
+
+// The size comes from the media's own dimensions; the look comes from the project's styles.
+export const MediaPlaceholder = ({ label, width, height, aspectRatio = "16 / 9" }: MediaPlaceholderProps) => (
+  <div className="media-placeholder" style={{ width: width ?? "100%", height, aspectRatio: height ? undefined : aspectRatio }}>
+    {label}
+  </div>
+);
 ```
 
-Match the project's styling system rather than copying the inline styles. One shared placeholder
-component, used by image, video and any other media, keeps the editor consistent.
+One shared placeholder component, used by image, video and any other media, keeps the editor
+consistent.
 
 - **Video** — the same rule, plus: no autoplay in the Edit tab
   ([interactive-components.md](interactive-components.md#stop-motion-in-the-edit-tab)).
@@ -125,16 +104,17 @@ component, used by image, video and any other media, keeps the editor consistent
   parameter id.
 - **Never gate `UniformText` on the value alone**; use the optional-text pattern above. It also
   renders nothing if the parameter object itself is missing from the component.
-- **The placeholder is an attribute, not markup.** Canvas draws it from `data-uniform-placeholder`;
-  your `render` function never sees it, and while editing `render` is not applied to the value
-  either (the App Router never applies it in the editor; the Page Router skips it while the field
-  has focus).
-- **Function form**: `placeholder={({ id }) => …}` builds the text from the parameter id.
-  - App Router: from a Server Component, pass a string. Function props cannot cross into the
-    client text component; see the App Router skill's
+- **The placeholder is an attribute, not markup.** Canvas draws it from `data-uniform-placeholder`
+  on an empty element, and your `render` function never sees it. While editing, the App Router
+  never applies `render`; the Page Router skips it only while the field has focus, so a `render`
+  that returns markup for an empty value hides the placeholder.
+- **Function props.** `placeholder` also takes a function, `({ id }) => …`.
+  - App Router: from a Server Component, pass strings. Function props, `placeholder` and
+    `render` alike, cannot cross into the client text component; see the App Router skill's
     [components.md](../../uniform-nextjs-app-router/references/components.md).
   - Page Router: set a project-wide default once with `contextualEditingDefaultPlaceholder` on
-    `<UniformComposition>`; a component's own `placeholder` overrides it.
+    `<UniformComposition>` **and** on `<UniformPlayground>`, or patterns get none. It covers
+    `UniformRichText` too, and a component's own `placeholder` overrides it.
 
 ## `UniformRichText` placeholders
 
@@ -142,12 +122,12 @@ The two SDKs differ here:
 
 | | App Router | Page Router |
 |---|---|---|
-| Empty rich-text value in the editor | Renders **nothing** — the placeholder never shows | Renders the placeholder in `<p><i>…</i></p>` |
+| Empty rich-text value in Canvas | Renders **nothing** — the placeholder never shows | Renders the placeholder in `<p><i>…</i></p>`, in both tabs |
 | Parameter missing entirely | Renders nothing | Renders nothing |
 
-The App Router SDK marks only `text` parameters as editable in editor state, and its
-`UniformRichText` gates both the placeholder and the empty-value output on that mark. Render your
-own hint in the Edit tab:
+In editor renders the App Router SDK marks only `text` parameters with `_contextualEditing`, and
+its `UniformRichText` renders the placeholder and the empty-value output only for a marked
+parameter. Render your own hint in the Edit tab:
 
 ```tsx
 import { isRichTextValueConsideredEmpty } from "@uniformdev/richtext";
@@ -188,5 +168,6 @@ effect: screen readers read the raw value to visitors.
 
 ## "Component not found"
 
-A resolver fallback for unmapped component types helps developers while building. It must not
-reach production: return `null` there, and show the message only when `isInCanvas(context)`.
+A resolver fallback that prints "not found" for unmapped types also shows on the live site. Report
+it under *Needs a manual check* (E7) and leave the decision to the user; if they want it hidden
+from visitors, render the message only when `isEditTab(context)`.

@@ -4,12 +4,11 @@ The catalog the review runs. Every check has an ID, the **fix type** its finding
 when the user chooses what to apply (see [review-and-selection.md](review-and-selection.md)), and
 the reference with the fix.
 
-The greps find **candidates**. Each hit still needs a look, because the same code shape is right
-in one component and a gap in the next. A finding is recorded only after you have read the code
-and can say what the author experiences.
+The greps find **candidates**. Record a finding only after you have read the code and can say
+what the author experiences: the same code shape is right in one component and a gap in the next.
 
 Run them from the directory that holds the app. The helper searches components and stylesheets
-(spacing and `pointer-events` gaps usually live in CSS) and excludes build output:
+and excludes build output:
 
 ```bash
 g() { grep -rnE --include='*.ts' --include='*.tsx' --include='*.css' --include='*.scss' --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist "$@" . ; }
@@ -22,21 +21,20 @@ recipe uses `perl -0777` to read each file whole.
 
 Findings are grouped into four categories of up to four fix types each. The fix type is the unit
 the user selects. **Foundations** are not offered: they are applied when a selected fix needs them.
-P2 is not a fix type either; its findings go under *Needs a manual check* in the report.
+E7 and P2 are not fix types either; their findings go under *Needs a manual check* in the report.
 
 | Category | Fix type | Checks | Default |
 |---|---|---|---|
 | Empty states | Keep empty components visible | E1 | Recommended |
 | | Media placeholders | E2 | Recommended |
 | | Text and rich-text placeholders | E3, E4, E5 | Recommended |
-| | Stop editor leaks | E6, E7 | Recommended — live-site bugs |
 | Slots | Sized slot placeholders | S1, S2, S3 | Recommended |
 | | Placeholder-aware slot logic | S4, S5 | Recommended |
 | | Slot markup and spacing | S6, S7 | Recommended |
 | Interactive | Keep hidden items mounted | I1 | Recommended |
-| | Stop motion while editing | I2, I3 | Recommended |
-| | Reach every item | I4, I5, I6 | Recommended |
-| | Fix editing leaks | I7, I8, F2 | Recommended — live-site or silent bugs |
+| | Stop motion in the Edit tab | I2, I3 | Recommended |
+| | Reach every item | I4, I5, I6, F2 | Recommended |
+| | Live-site leaks | E6, I7 | Recommended — changes the live site |
 | Playground | Pattern frame | P1 | Recommended when the project has patterns |
 
 | Foundation | Applied when |
@@ -58,7 +56,7 @@ The first line decides which column of the SKILL.md signal table applies. The se
 project already does — reuse its helpers and conventions instead of adding a second set.
 
 **F2 · App Router project importing the Page Router hook.** It is silently inert there. Fix type:
-*Fix editing leaks*.
+*Reach every item*.
 
 ```bash
 g "useUniformContextualEditingState|from ['\"]@uniformdev/canvas-react['\"]"
@@ -75,7 +73,8 @@ g 'isContextualEditing'
 ## E — Empty states · [empty-states.md](empty-states.md)
 
 **E1 · Components that return `null` with no editor gate anywhere in the file** ("drops in and
-vanishes"). Confirm the guard: an icon-only button is not empty.
+vanishes"). The fix adds the Edit-tab gate to the existing condition. A condition that also hides
+something a visitor would see (an icon-only button) goes under *Needs a manual check*.
 
 ```bash
 for f in $(g -l 'return null'); do grep -qE 'isContextualEditing|previewMode|isEditTab' "$f" || echo "$f"; done
@@ -117,7 +116,8 @@ perl -0777 -ne 'while(/<UniformText\b.*?\/>/gs){ my $l = substr($_,0,$-[0]) =~ t
 ```
 
 **E7 · A "component not found" fallback that renders on the live site.** Read the resolver's
-fallback component; it should render nothing outside Canvas.
+fallback component. Hiding it changes what visitors see, so report it under *Needs a manual check*
+and let the user decide.
 
 ```bash
 g 'NotFound|NotImplemented|not found|not implemented'
@@ -199,7 +199,7 @@ for f in $(g -l 'useState(<[^>]*>)?\((0|false)\)'); do grep -qE 'previewMode|isE
 **I5 · Editor-only controls that cannot be clicked.** Files that render buttons and read the Edit-tab
 signal but never set `IS_RENDERED_BY_UNIFORM_ATTRIBUTE`. Read whether the buttons are editor-only.
 Ordinary arrows next to an autoplay gate are not a finding; an editor-only picker without the
-attribute is, because Canvas turns its clicks into selections:
+attribute is:
 
 ```bash
 for f in $(g -l '<button'); do grep -qE 'previewMode|isEditTab' "$f" && ! grep -qE 'IS_RENDERED_BY_UNIFORM_ATTRIBUTE|data-is-rendered-by-uniform' "$f" && echo "$f"; done
@@ -215,12 +215,6 @@ g 'inert|pointer-events-none|pointer-events:[[:space:]]*none|pointerEvents'
 
 ```bash
 g '_contextualEditing'
-```
-
-**I8 · Instances rendered twice.** Responsive duplicates render one slot in two places:
-
-```bash
-g 'md:hidden|hidden md:|lg:hidden|hidden lg:'
 ```
 
 ## P — Playground · [playground-tools.md](playground-tools.md)
@@ -244,19 +238,21 @@ npx uniform canvas preview-viewport list --format yaml   # needs the project's A
 Report a mismatch, or a CLI that cannot reach the project, under *Needs a manual check*. The
 viewports are a project setting the user changes; do not push them.
 
-## Production is unchanged
+## The live site looks the same
 
-Before and after the fixes, render the same published page and diff the HTML:
+If the app can render a published page, save its HTML before the fixes (workflow step 1) and
+compare it afterwards:
 
 ```bash
-curl -s http://localhost:3000/some-page > before.html   # on the original code
+curl -s http://localhost:3000/some-page > before.html   # before the fixes
 curl -s http://localhost:3000/some-page > after.html    # after the fixes
 diff before.html after.html
 ```
 
-Only differences you intended may appear, such as a removed empty wrapper or a `null` where an
-empty `<a>` was. No placeholder text, no editor controls, no `contentEditable` and no
-`data-uniform-placeholder` on a published page.
+Expected differences: hidden items that are now mounted, empty wrappers that no longer render,
+and removed leaks such as a `contentEditable` label or an `sr-only` raw value. Nothing else: no
+placeholder text, no editor controls, no `data-uniform-placeholder`. If the app cannot render a
+published page, for example without credentials, say so in the closing report.
 
 ## Check in Canvas
 
@@ -274,7 +270,7 @@ Open a composition that uses each changed component, and a pattern in the playgr
 
 **Preview tab:**
 
-- [ ] No placeholders, no editor controls, panels in their normal state, autoplay running
+- [ ] No placeholders or editor controls you added, panels in their normal state, autoplay running
 
 **Playground:**
 
