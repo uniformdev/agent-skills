@@ -1,11 +1,11 @@
 # Playground tools
 
-Patterns are edited in the **playground** — the route Canvas opens a pattern in, with no page
+Patterns are edited in the **playground**, the route Canvas opens a pattern in, with no page
 around it. A bare pattern sits against a blank page at whatever width the preview happens to be,
 with nothing saying what it is. A small frame, rendered only in the playground, fixes that:
 
 - the pattern's component type, so the author knows what they are looking at;
-- a container width that suits the component — a card at card width, not stretched across 1440px;
+- a container width that suits the component: a card at card width, not stretched across 1440px;
 - a width selector, to see the pattern in narrower and wider containers;
 - optionally a background or theme switch, for components meant to sit on dark sections.
 
@@ -13,7 +13,7 @@ The frame is authoring UI. It is never rendered in a composition, and never on t
 
 ## Widths are not breakpoints
 
-A width selector narrows a `<div>` inside the preview. The preview itself — the iframe — keeps its
+A width selector narrows a `<div>` inside the preview. The preview iframe itself keeps its
 width, so **media queries do not change**: `md:` and `lg:` classes and `@media` rules respond to
 the iframe, not to the frame. Only container queries (`@container`) respond to the selector.
 
@@ -22,26 +22,20 @@ So be precise about what each tool is for, and say it in the frame's hint text:
 | To check | Use |
 |---|---|
 | How a component fills a narrower or wider container; container-query layouts | The frame's width selector |
-| Media-query breakpoints — mobile, tablet, desktop layouts | **Canvas preview viewports**: the device buttons in the preview toolbar, which resize the iframe |
+| Media-query breakpoints: mobile, tablet, desktop layouts | **Canvas preview viewports**: the device buttons in the preview toolbar, which resize the iframe |
 
-Preview viewports are a project setting. Make them match the design system's breakpoints instead
-of the defaults: each is `{ name, icon, width }`, edited in the project settings and serialised as
-the `previewViewport` entity, so `uniform canvas preview-viewport pull|push` — or `uniform sync`
-when the project syncs them — keeps them in source control next to the design tokens.
+Preview viewports are a project setting, each `{ name, icon, width }`. They should match the
+design system's breakpoints rather than the defaults. Read them with
+`uniform canvas preview-viewport list`, compare, and report a mismatch to the user. Changing them
+is the user's call: in the project settings, or through `uniform canvas preview-viewport` /
+`uniform sync` (the `previewViewport` entity) if the project keeps them in source control.
 
 ## Making the frame's controls clickable
 
-In the Edit tab, Canvas turns every click in the preview into a component selection: its script
-listens on the document in the capture phase and stops the event before React sees it. Your
-buttons never receive `onClick` unless they sit inside an element carrying
-`IS_RENDERED_BY_UNIFORM_ATTRIBUTE` (`data-is-rendered-by-uniform`, from `@uniformdev/canvas`).
-
-- Put the attribute on the frame's **chrome** — the control row, the label, the hint.
-- **Never on an ancestor of the pattern.** Everything inside a marked element stops being
-  selectable by click or focus, and Canvas ignores changes inside it when it redraws its overlay.
-
-The same applies to editor-only controls inside components — see
-[interactive-components.md](interactive-components.md#editor-only-controls).
+In the Edit tab the frame's buttons receive clicks only inside an element carrying
+`IS_RENDERED_BY_UNIFORM_ATTRIBUTE` (`data-is-rendered-by-uniform`, from `@uniformdev/canvas`). Put
+it on the frame's **chrome** (the control row, the label, the hint), never on an ancestor of the
+pattern. Why: [interactive-components.md](interactive-components.md#in-the-edit-tab-clicks-select).
 
 ## App Router
 
@@ -208,8 +202,3 @@ behaviour (breadcrumbs, a sticky header offset) that makes no sense in a pattern
 
 A composition with no project map node is also previewed through the playground, so treat the
 signal as "rendered without a page around it", not strictly "this is a pattern".
-
-## Keep it out of search
-
-The playground route is authoring infrastructure. Exclude it from `robots.txt` and the sitemap, and
-mark it `noindex`, so a crawler that finds the URL does not index a framed, empty page.

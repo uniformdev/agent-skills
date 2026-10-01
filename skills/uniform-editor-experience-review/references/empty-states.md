@@ -1,7 +1,7 @@
 # Empty states
 
-What a component renders when an author has not filled it in yet — which is the state every
-component is in the moment it is dropped onto the page.
+What a component renders when an author has not filled it in yet. Every component is in this
+state the moment it is dropped onto the page.
 
 The gates used below (`isEditTab`, `isInCanvas`) are defined in
 [detecting-the-editor.md](detecting-the-editor.md).
@@ -35,9 +35,9 @@ function Button({ label, icon }: ButtonProps) {
 | Label text, icon, image, video, child components in a slot | Link target, variant, colour, size, alignment |
 
 - A button with an icon and no label is not empty.
-- A button with a link and no label **is** empty — there is nothing to see or click. Guarding on
+- A button with a link and no label **is** empty: there is nothing to see or click. Guarding on
   "no label *and* no link" ships an empty `<a>` to production.
-- A slot's items count only after filtering out editor placeholder items — see
+- A slot's items count only after filtering out editor placeholder items:
   [slot-placeholders.md](slot-placeholders.md#counting-and-branching-on-slot-contents).
 
 **Optional text inside a component** needs the same treatment, one level down. `UniformText`
@@ -53,8 +53,8 @@ alone, which removes the edit target:
 
 ## Image and video placeholders
 
-There is no Uniform image or asset component — the project renders assets itself, so it has to
-render the empty state itself too. When the asset parameter is empty:
+There is no Uniform image or asset component. The project renders assets itself, so it renders
+the empty state itself too. When the asset parameter is empty:
 
 - **Production:** render nothing. Never a broken `<img src="">`, never an empty sized box.
 - **Edit tab:** render a placeholder that occupies the space the media will. Clicking it selects
@@ -123,21 +123,22 @@ component, used by image, video and any other media, keeps the editor consistent
 - **Write it as an instruction naming the field**, in the author's language: `"Card title"`,
   `"Button label"`, `"Short description (optional)"`. Not `"Text goes here"`, and not the
   parameter id.
-- **Never gate `UniformText` on the value alone** — see the optional-text pattern above. It also
+- **Never gate `UniformText` on the value alone**; use the optional-text pattern above. It also
   renders nothing if the parameter object itself is missing from the component.
 - **The placeholder is an attribute, not markup.** Canvas draws it from `data-uniform-placeholder`;
   your `render` function never sees it, and while editing `render` is not applied to the value
   either (the App Router never applies it in the editor; the Page Router skips it while the field
   has focus).
-- **Function form** — `placeholder={({ id }) => …}` builds the text from the parameter id.
-  - App Router: `UniformText` is a Client Component, so a function can be passed only from
-    another Client Component. From a Server Component, pass a string.
+- **Function form**: `placeholder={({ id }) => …}` builds the text from the parameter id.
+  - App Router: from a Server Component, pass a string. Function props cannot cross into the
+    client text component; see the App Router skill's
+    [components.md](../../uniform-nextjs-app-router/references/components.md).
   - Page Router: set a project-wide default once with `contextualEditingDefaultPlaceholder` on
     `<UniformComposition>`; a component's own `placeholder` overrides it.
 
 ## `UniformRichText` placeholders
 
-The two SDKs differ here, and the App Router behaviour is a trap:
+The two SDKs differ here:
 
 | | App Router | Page Router |
 |---|---|---|
@@ -180,8 +181,8 @@ effect: screen readers read the raw value to visitors.
   the card unselectable. Drop it while in Canvas: `pointer-events: isInCanvas(context) ? undefined
   : "none"`.
 - **Navigation.** In the Edit tab, Canvas stops link clicks before any handler runs, so an author
-  selecting a link or typing into its label does not navigate away — no editor-specific link
-  component is needed. The Preview tab navigates as the live site does.
+  selecting a link or typing into its label does not navigate away. No editor-specific link
+  component or navigation gate is needed. The Preview tab navigates as the live site does.
 - **Link targets** are edited in the parameter panel. A link with no target still needs its label
   visible in the Edit tab so there is something to select.
 

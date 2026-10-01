@@ -4,28 +4,24 @@ Components that show one thing at a time, or change on their own: carousels, sli
 accordions, FAQs, modals, drawers, tooltips, hotspots, mega-menu panels, countdowns, autoplaying
 video, dismissible banners.
 
-Each of them hides authored content behind interaction. In the editor the author has to reach
-every item — to click it, type into it, and drop into its slots. The patterns below, from
-lightest to heaviest, are how. The gates (`isInCanvas`, `isEditTab`) are defined in
-[detecting-the-editor.md](detecting-the-editor.md).
+Each of them hides authored content behind interaction, and the author has to reach every item to
+click it, type into it and drop into its slots. The patterns below go from lightest to heaviest.
+The gates (`isInCanvas`, `isEditTab`) are defined in [detecting-the-editor.md](detecting-the-editor.md).
 
 ## In the Edit tab, clicks select
 
-Before choosing a pattern, know what the author can and cannot do in the Edit tab. Canvas's script
-listens for clicks on the document in the capture phase, stops them before React sees them, and
-turns them into a component selection. So in the Edit tab:
+Canvas's script listens for clicks on the document in the capture phase, stops them before React
+sees them, and turns them into a component selection. So in the Edit tab:
 
-- **The component's own controls do nothing when clicked** — carousel arrows and dots, accordion
+- **The component's own controls do nothing when clicked**: carousel arrows and dots, accordion
   toggles, tab buttons, "read more" links. Links do not navigate either.
-- **Focus still fires.** Clicking into an inline-editable text focuses it, and `onFocus` handlers
-  run — useful for switching to the tab whose label the author is editing.
+- **Focus still fires.** Clicking into an inline-editable text focuses it and `onFocus` handlers
+  run, which is how a tab bar can switch to the tab whose label the author is editing.
 - **The Preview tab behaves like production**: clicks work, nothing is selected.
 - **Editor UI you add is clickable only inside an element marked with
-  `IS_RENDERED_BY_UNIFORM_ATTRIBUTE`** — see [editor-only controls](#editor-only-controls).
+  `IS_RENDERED_BY_UNIFORM_ATTRIBUTE`**. See [editor-only controls](#editor-only-controls).
 
-That is why reachability in the editor has to come from the patterns below — mounting, forcing
-open, following the selection, editor controls — and never from "the author can just click the
-arrow".
+So "the author can click the arrow" never makes an item reachable. The patterns below do.
 
 ## Keep every item mounted
 
@@ -54,8 +50,8 @@ ones with CSS (`hidden`, a transform, `opacity` plus `visibility`). Do not unmou
 Canvas finds components through markers rendered around each slot child. An unmounted item has
 none, so selecting it in the component tree does nothing and the author cannot tell why.
 
-Closed panels hidden with `inert` must drop it while in Canvas — `inert` swallows the clicks an
-author uses to select. The navigation skill's
+Closed panels hidden with `inert` must drop it while in Canvas, because `inert` swallows the
+clicks an author uses to select. The navigation skill's
 [interaction-and-a11y.md](../../uniform-navigation/references/interaction-and-a11y.md) covers this
 for flyouts; the same rule applies to every panel.
 
@@ -75,14 +71,14 @@ marquee scrolling, countdowns that redirect, entrance animations that replay on 
   timer or the library's autoplay API in an effect keyed on the tab, rather than recreating the
   carousel.
 - **The Preview tab keeps real motion.** That is where the author checks it.
-- **Dismissible components** — cookie banners, announcement bars, "don't show again" modals —
-  store their dismissed state in cookies or storage. Once an author dismisses one inside the
-  preview, it disappears from Canvas too. Ignore the stored state in the Edit tab.
+- **Dismissible components** (cookie banners, announcement bars, "don't show again" modals) keep
+  their dismissed state in cookies or storage. Once an author dismisses one inside the preview, it
+  disappears from Canvas too. Ignore the stored state in the Edit tab.
 
 ## Force open in the Edit tab
 
-For content that still reads with everything open — accordions, FAQs, disclosures, tooltips,
-hotspots, read-more blocks:
+For content that still reads with everything open: accordions, FAQs, disclosures, tooltips,
+hotspots, read-more blocks.
 
 ```tsx
 const isOpen = isEditTab || openIndexes.includes(index);
@@ -99,13 +95,12 @@ const isOpen = isEditTab || openIndexes.includes(index);
 
 ## Following the Canvas selection
 
-For components that can show only one item at a time — carousels, tabs, mega-menu categories —
-switch to the item that holds whatever the author selected, whether they clicked it in the
-component tree or on the page.
+For components that can show only one item at a time (carousels, tabs, mega-menu categories),
+switch to the item that holds whatever the author selected, in the component tree or on the page.
 
 ### What the selection tells you
 
-`selectedComponentReference`, on both SDKs:
+`selectedComponentReference` is the same object on both SDKs. The fields this pattern uses:
 
 | Field | Meaning |
 |---|---|
@@ -115,22 +110,26 @@ component tree or on the page.
 
 Two cases:
 
-- **A slide itself is selected** — `parentId` is the carousel's `_id`, and `componentIndex` is
+- **A slide itself is selected.** `parentId` is the carousel's `_id`, and `componentIndex` is
   the slide index.
-- **Something inside a slide is selected** — a heading in slide 3. `parentId` is the slide (or
-  deeper), so the carousel needs a map from every descendant id to the slide index it sits in.
+- **Something inside a slide is selected**, such as a heading in slide 3. `parentId` is the slide
+  or something deeper, so the carousel needs a map from every descendant id to its slide index.
+  `walkNodeTree` from `@uniformdev/canvas` builds it:
 
 ```ts
-import type { ComponentInstance } from "@uniformdev/canvas";
+import { walkNodeTree, type ComponentInstance } from "@uniformdev/canvas";
 
-/** Maps every component id inside each slot item to that item's index. */
-export function indexDescendants(items: ComponentInstance[] = []): Record<string, number> {
+/** Maps every component id inside `parent`'s `slotName` slot to the index of the slot item that holds it. */
+export function indexDescendants(parent: ComponentInstance | null | undefined, slotName: string) {
   const map: Record<string, number> = {};
-  const visit = (node: ComponentInstance, index: number) => {
-    if (node._id) map[node._id] = index;
-    for (const children of Object.values(node.slots ?? {})) children?.forEach((child) => visit(child, index));
-  };
-  items.forEach((item, index) => visit(item, index));
+  if (!parent) return map;
+  walkNodeTree(parent, ({ type, node, ancestorsAndSelf }) => {
+    // ancestorsAndSelf[0] is this node and the last entry is `parent`, so the one before it is the slot item.
+    const item = ancestorsAndSelf[ancestorsAndSelf.length - 2];
+    if (type === "component" && node._id && item?.type === "slot" && item.parentSlot === slotName) {
+      map[node._id] = item.parentSlotIndexFn();
+    }
+  });
   return map;
 }
 ```
@@ -158,8 +157,7 @@ const { data } = useUniformCurrentComponent();
 const { previewMode, selectedComponentReference: selected } = useUniformContextualEditingState({ global: true });
 const isEditTab = previewMode === "editor";
 
-const slides = data?.slots?.slides;
-const slideOf = useMemo(() => indexDescendants(slides), [slides]);
+const slideOf = useMemo(() => indexDescendants(data, "slides"), [data]);
 const [index, setIndex] = useState(0);
 
 useEffect(() => {
@@ -170,14 +168,15 @@ useEffect(() => {
 
 ### App Router selection hook
 
-The App Router SDK has no equivalent hook, and `useUniformContextualEditingState` from
-`canvas-react` silently reports nothing there. The selection still reaches the page: Canvas's
-in-context script — which the App Router SDK loads, as the Page Router one does — posts an
-`update-contextual-editing-state-internal` message to the page's own window whenever the
-selection or the tab changes, and keeps the latest state on
-`window.__UNIFORM_CONTEXTUAL_EDITING__.state`. `canvas-react`'s hook is built on exactly that
-message. Listen for it with the public channel API from `@uniformdev/canvas` (add it as a direct
-dependency if the project does not have one):
+The App Router SDK has no equivalent hook. `useUniformContextualEditingState` from `canvas-react`
+imports and type-checks there, but it reads a React context the App Router SDK never provides, so
+it reports `isContextualEditing: false` and no selection, with no error.
+
+The selection still reaches the page. Canvas's in-context script, which both SDKs load, posts an
+`update-contextual-editing-state-internal` message to the page's window whenever the selection or
+the tab changes, and keeps the latest state on `window.__UNIFORM_CONTEXTUAL_EDITING__.state`.
+`canvas-react`'s hook reads the same two. Listen with the channel API from `@uniformdev/canvas`
+(add it as a direct dependency if the project does not have one):
 
 ```tsx
 "use client";
@@ -236,8 +235,8 @@ component can read its own subtree and send the map to the client — only while
 // Carousel.tsx — server component
 const slideOf = context.isContextualEditing
   ? indexDescendants(
-      compositionCache.getUniformComponent({ compositionId: context._id, componentId: component._id })?.slots
-        ?.slides,
+      compositionCache.getUniformComponent({ compositionId: context._id, componentId: component._id }),
+      "slides",
     )
   : undefined;
 
@@ -266,9 +265,9 @@ themselves.
 ## Editor-only controls
 
 The component's own arrows and dots do nothing when clicked in the Edit tab (see
-[above](#in-the-edit-tab-clicks-select)). When following the selection is not enough — authors
-who work on the page rather than in the component tree, or a component with no selection
-support — render a small picker in the Edit tab, marked so Canvas lets its clicks through:
+[above](#in-the-edit-tab-clicks-select)). When following the selection is not enough, for authors
+who work on the page rather than in the component tree or for a component with no selection
+support, render a small picker in the Edit tab and mark it so Canvas lets its clicks through:
 
 ```tsx
 import { IS_RENDERED_BY_UNIFORM_ATTRIBUTE } from "@uniformdev/canvas";
@@ -284,13 +283,12 @@ import { IS_RENDERED_BY_UNIFORM_ATTRIBUTE } from "@uniformdev/canvas";
 )}
 ```
 
-- **The attribute is what makes it work.** Without it, every click on the picker is turned into a
-  selection and `onClick` never runs. Put it on the picker's container — it covers every
-  descendant.
-- **Never put it on an element that contains authored content** — the slides themselves. Inside a
+- **The attribute is what makes it work.** Without it, every click on the picker becomes a
+  selection and `onClick` never runs. Put it on the picker's container; it covers every descendant.
+- **Never put it on an element that contains authored content**, such as the slides. Inside a
   marked element nothing can be selected by click or focus, and Canvas stops redrawing its overlay
   for changes there.
-- `slideCount` is the **filtered** count — see
+- `slideCount` is the **filtered** count:
   [slot-placeholders.md](slot-placeholders.md#counting-and-branching-on-slot-contents).
 - Place it outside the slides so it is never mistaken for authored content, and style it
   unmistakably as editor UI.
@@ -327,26 +325,14 @@ which the author cannot edit in place.
 - **Never construct the marker yourself.** `_contextualEditing: { isEditable: true }` written into a
   hand-built parameter object makes the label `contentEditable` for every visitor.
 
-## Library specifics
+## Page Router slide wrappers
 
-- **Keep the carousel library's instance in state, not only a ref**, so an effect that moves it
-  runs again once the instance exists.
-- **Loop mode** in libraries that clone slides (Swiper) needs the loop-aware method
-  (`slideToLoop`); the plain `slideTo` targets the clones.
-- **Scroll-based carousels** can be scrolled by the browser itself — when Canvas brings a selected
-  element into view, for instance — without their index state knowing. Derive the index from the
-  scroll position, not only from clicks.
-- **Page Router `wrapperComponent`** must be defined at module scope — an inline wrapper remounts
-  the carousel on every update Canvas pushes and sends it back to the first slide. Pass it the
-  active index through a context, since its only props are `items` and `slotName`.
+A carousel that wraps its slides with `wrapperComponent` must define the wrapper at module scope,
+or it jumps back to slide 1 on every edit. Why, and how to pass it the active index:
+[slot-placeholders.md](slot-placeholders.md#wrapping-slot-items).
 
 ## Rendering one instance twice
 
-Desktop and mobile variants rendered side by side and toggled with CSS, or a card template
-repeated for each search result, give Canvas two or more editable regions for one component. Canvas
-outlines all of them and an inline edit in one fights the other.
-
-Render once and restyle responsively when the design allows. When it does not, make one copy the
-editable one and render the others without editing attributes — on the Page Router by overriding
-`UniformCompositionContext` with `isContextualEditing: false` around the copies, a technique that
-depends on that exported context's shape, so guard it and note why it is there.
+Desktop and mobile copies rendered side by side and toggled with CSS give Canvas two editable
+regions for one component. Canvas outlines both, and an inline edit in one fights the other. Render
+the component once and restyle it responsively.

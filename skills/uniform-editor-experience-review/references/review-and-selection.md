@@ -1,7 +1,7 @@
 # Reporting findings and choosing what to fix
 
 The review ends in two things: a report the user can read on its own, and a choice of what to
-apply. Both are built from the same grouping — **category → fix type → findings** — defined in
+apply. Both use the same grouping, **category → fix type → findings**, defined in
 [review-checks.md](review-checks.md#fix-types).
 
 ## The report
@@ -42,14 +42,14 @@ Hero, Page — reviewed; nothing to change.
 Rules for the report:
 
 - **One bullet per component per check.** Component, `file:line`, check ID.
-- **Symptom first, in the author's terms** — what they see or cannot do in Canvas. Then the fix in
+- **Symptom first, in the author's terms**: what they see or cannot do in Canvas. Then the fix in
   one sentence. The code-level cause belongs in the fix, not the headline.
 - **Mark live-site bugs** in the fix-type heading. They change what visitors get today, which is a
   different kind of urgency from authoring comfort.
 - **List the components with no findings.** It shows they were reviewed, not skipped.
 - **Omit empty categories and fix types.** No "Slots: nothing found" sections.
-- Findings the agent cannot confirm from code alone — viewport settings, anything that needs a
-  running Canvas — go under *Needs a manual check*, not into a fix type.
+- Findings the agent cannot confirm or change from code alone (preview viewport settings,
+  anything that needs a running Canvas) go under *Needs a manual check*, not into a fix type.
 
 ## Asking which fixes to apply
 
@@ -95,7 +95,7 @@ ask in one call:
 }
 ```
 
-An answer may include free text under "Other" — read it as instructions ("only the carousel",
+An answer may include free text under "Other". Read it as instructions ("only the carousel",
 "skip Tabs for now") and adjust the selection before applying.
 
 ### Without one
@@ -113,7 +113,6 @@ Reply with the numbers to apply, `recommended`, or `all`:
 5. [x] Stop motion while editing — Carousel
 6. [x] Reach every item — Carousel, Tabs, Accordion
 7. [x] Fix editing leaks — Tabs (live-site bug)
-8. [ ] Match preview viewports — project setting; needs CLI access
 ```
 
 ### When not to ask
@@ -126,8 +125,8 @@ Reply with the numbers to apply, `recommended`, or `all`:
 
 ## Applying the selection
 
-1. **Foundations the selection needs, first** — the gate helpers, the App Router empty-placeholder
-   resolver, the App Router selection hook — per the table in
+1. **Foundations the selection needs, first**: the gate helpers, the App Router empty-placeholder
+   resolver, the App Router selection hook, per the table in
    [review-checks.md](review-checks.md#fix-types). Reuse the project's own if it has them.
 2. **Each selected fix type**, across all the components it lists, with the fix in the linked
    reference.
@@ -136,7 +135,8 @@ Reply with the numbers to apply, `recommended`, or `all`:
 
 ## The closing report
 
-- **Applied** — fix type, components, files.
-- **Left open** — the fix types not selected, still listed so they are not lost.
-- **Verify** — the production diff result, and the Canvas checklist items that still need a human
+- **Applied**: fix type, components, files.
+- **Left open**: the fix types not selected, still listed so they are not lost, and the manual
+  checks.
+- **Verify**: the production diff result, and the Canvas checklist items that still need a human
   in Canvas ([review-checks.md](review-checks.md#check-in-canvas)).

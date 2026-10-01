@@ -270,8 +270,8 @@ Notes on reading particular fixtures:
   pick fixes; the prompt says to apply everything recommended (the skill's own skip-the-question rule) and
   describes only symptoms, so the fixes need knowledge the fixture cannot teach by example. `Hero` is already
   correct and must come out unchanged. It stages `uniform-nextjs-app-router` alongside, for the same reason
-  as the navigation fixture. One measured pair (Vercel sandbox, Claude Code on Sonnet 4.6): baseline
-  3/11, with-skill 11/11.
+  as the navigation fixture. One measured pair (Vercel sandbox, Claude Code on Sonnet 4.6), graded
+  with the current `EVAL.ts`: baseline 2/10, with-skill 10/10.
 - **Assertions strip comments before matching**, so an agent that quotes a rule back in a comment is
   not credited — or failed — for agreeing with it.
 - **The automations fixtures use the full discovery skip set** (`.claude`, `.agents`, `.cursor`,

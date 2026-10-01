@@ -78,34 +78,40 @@ const usesEditorSignal = (text: string) => references(text, ANY_EDITOR_SIGNAL);
 // JSX elements matched whole (props span lines), from the tag to its self-closing end.
 const elements = (text: string, tag: string) => text.match(new RegExp(`<${tag}\\b[\\s\\S]*?\\/>`, 'g')) ?? [];
 
-test('look-changing affordances are gated on the Edit tab', () => {
-  expect(
-    code(),
-    'isContextualEditing is true in the Preview tab too; placeholders, forced-open panels and ' +
-      'stopped autoplay belong behind pageState.previewMode === "editor"'
-  ).toMatch(EDIT_TAB);
-});
+// The conditions of `if (…) return null` guards, with any local const they name expanded one level
+// (`const hasIcon = …`), so a guard split across declarations still reads as one condition.
+const nullGuards = (text: string) =>
+  [...text.matchAll(/if\s*\(([\s\S]*?)\)\s*\{?\s*return\s+null/g)]
+    .map(([, cond]) =>
+      [cond, ...[...cond.matchAll(/\b([A-Za-z_]\w*)\b/g)].map(([, n]) => text.match(new RegExp(`const\\s+${n}\\s*=([^;\\n]*)`))?.[1] ?? '')].join(' ')
+    )
+    .join('\n');
 
-test('empty Button and Image stay in the editor', () => {
+// Placeholders and hints change the look, so they belong to the Edit tab: isContextualEditing is true
+// in the Preview tab too, where authors check the page as visitors see it.
+const PREVIEW_TAB_LEAK = 'isContextualEditing alone is also true in the Preview tab; gate on pageState.previewMode === "editor"';
+
+test('empty Button and Image stay in the Edit tab', () => {
   const button = componentCode(/^Button/);
   expect(button, 'a freshly dropped button vanishes and cannot be selected').not.toMatch(
     /if\s*\(\s*!\s*label\?\.value\s*\)\s*return\s+null/
   );
-  expect(button, 'the empty-button guard is relaxed only in the editor').toSatisfy(usesEditorSignal);
+  expect(button, `the empty button shows only in the Edit tab — ${PREVIEW_TAB_LEAK}`).toSatisfy(usesEditTab);
+  expect(nullGuards(button), 'a button with an icon and no label is not empty; the live site must keep it').toMatch(/icon/i);
 
   const image = componentCode(/^Image/);
   expect(image, 'an empty image leaves the author nothing to click').not.toMatch(
     /if\s*\(\s*!\s*url\s*\)\s*return\s+null/
   );
-  expect(image, 'the image placeholder exists only in the editor').toSatisfy(usesEditorSignal);
+  expect(image, `the image placeholder shows only in the Edit tab — ${PREVIEW_TAB_LEAK}`).toSatisfy(usesEditTab);
 });
 
 test('empty rich text gets its own editor hint', () => {
   expect(
     componentCode(/^RichText/),
     'the App Router UniformRichText never renders its placeholder, so an empty field shows nothing ' +
-      'in Canvas unless the component renders an editor-gated hint'
-  ).toSatisfy(usesEditorSignal);
+      `in Canvas unless the component renders its own hint in the Edit tab — ${PREVIEW_TAB_LEAK}`
+  ).toSatisfy(usesEditTab);
 });
 
 test('empty slots get placeholders through resolveEmptyPlaceholder', () => {
@@ -130,8 +136,8 @@ test('Section slot logic survives the editor', () => {
   expect(src).toContain('isComponentPlaceholderId');
   expect(
     componentCode(/^Section/),
-    'hiding the empty aside removes its drop target — the author can never add the first item'
-  ).toSatisfy(usesEditorSignal);
+    `hiding the empty aside removes its drop target, so the author can never add the first item — ${PREVIEW_TAB_LEAK}`
+  ).toSatisfy(usesEditTab);
   expect(
     cssText(),
     'Canvas wraps slot children in <template> markers; `> * + *` counts them — use gap'

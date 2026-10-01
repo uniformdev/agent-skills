@@ -4,12 +4,12 @@ The catalog the review runs. Every check has an ID, the **fix type** its finding
 when the user chooses what to apply (see [review-and-selection.md](review-and-selection.md)), and
 the reference with the fix.
 
-The greps find **candidates** — each hit still needs a look, because the same code shape is right
+The greps find **candidates**. Each hit still needs a look, because the same code shape is right
 in one component and a gap in the next. A finding is recorded only after you have read the code
 and can say what the author experiences.
 
-Run them from the directory that holds the app. The helper searches components and stylesheets —
-spacing and `pointer-events` gaps usually live in CSS — and excludes build output:
+Run them from the directory that holds the app. The helper searches components and stylesheets
+(spacing and `pointer-events` gaps usually live in CSS) and excludes build output:
 
 ```bash
 g() { grep -rnE --include='*.ts' --include='*.tsx' --include='*.css' --include='*.scss' --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist "$@" . ; }
@@ -20,8 +20,9 @@ recipe uses `perl -0777` to read each file whole.
 
 ## Fix types
 
-Findings are grouped into four categories of up to four fix types each — the unit the user
-selects. **Foundations** are not offered: they are applied when a selected fix needs them.
+Findings are grouped into four categories of up to four fix types each. The fix type is the unit
+the user selects. **Foundations** are not offered: they are applied when a selected fix needs them.
+P2 is not a fix type either; its findings go under *Needs a manual check* in the report.
 
 | Category | Fix type | Checks | Default |
 |---|---|---|---|
@@ -37,8 +38,6 @@ selects. **Foundations** are not offered: they are applied when a selected fix n
 | | Reach every item | I4, I5, I6 | Recommended |
 | | Fix editing leaks | I7, I8, F2 | Recommended — live-site or silent bugs |
 | Playground | Pattern frame | P1 | Recommended when the project has patterns |
-| | Match preview viewports | P2 | Offered — a project setting, applied through the CLI or by the user |
-| | Keep playground unindexed | P3 | Recommended |
 
 | Foundation | Applied when |
 |---|---|
@@ -58,7 +57,7 @@ g 'isContextualEditing|previewMode|useUniformContextualEditingState|resolveEmpty
 The first line decides which column of the SKILL.md signal table applies. The second shows what the
 project already does — reuse its helpers and conventions instead of adding a second set.
 
-**F2 · App Router project importing the Page Router hook** — it will be silently inert. Fix type:
+**F2 · App Router project importing the Page Router hook.** It is silently inert there. Fix type:
 *Fix editing leaks*.
 
 ```bash
@@ -75,8 +74,8 @@ g 'isContextualEditing'
 
 ## E — Empty states · [empty-states.md](empty-states.md)
 
-**E1 · Components that return `null` with no editor gate anywhere in the file** — "drops in and
-vanishes". Confirm the guard: an icon-only button is not empty.
+**E1 · Components that return `null` with no editor gate anywhere in the file** ("drops in and
+vanishes"). Confirm the guard: an icon-only button is not empty.
 
 ```bash
 for f in $(g -l 'return null'); do grep -qE 'isContextualEditing|previewMode|isEditTab' "$f" || echo "$f"; done
@@ -95,7 +94,7 @@ g 'imageFrom|AssetParamValue|fields\.url|<img|<video|next/image'
 perl -0777 -ne 'while(/<UniformText\b.*?\/>/gs){ my $l = substr($_,0,$-[0]) =~ tr/\n//; print "$ARGV:",$l+1,"\n" unless $& =~ /placeholder/ }' $(g -l '<UniformText')
 ```
 
-**E4 · `UniformText` rendered only when it already has a value** — `x && <UniformText` or
+**E4 · `UniformText` rendered only when it already has a value**: `x && <UniformText` or
 `x ? <UniformText`. Fine when the condition includes the Edit tab; a gap when it tests the value
 alone:
 
@@ -103,14 +102,14 @@ alone:
 perl -0777 -ne 'while(/(&&|\?)\s*\(?\s*<UniformText\b/gs){ my $l = substr($_,0,$-[0]) =~ tr/\n//; print "$ARGV:",$l+1,"\n" }' $(g -l '<UniformText')
 ```
 
-**E5 · App Router `UniformRichText`** — its placeholder never shows, so each needs its own Edit-tab
+**E5 · App Router `UniformRichText`.** Its placeholder never shows, so each needs its own Edit-tab
 hint for the empty case:
 
 ```bash
 g '<UniformRichText'
 ```
 
-**E6 · Visually hidden `UniformText`** — reads raw values to screen readers on the live site.
+**E6 · Visually hidden `UniformText`.** It reads raw values to screen readers on the live site.
 Live-site bug.
 
 ```bash
@@ -139,7 +138,7 @@ g '<UniformComposition|<UniformPlayground|resolveEmptyPlaceholder'
 perl -0777 -ne 'while(/<UniformSlot\b.*?\/>/gs){ my $l = substr($_,0,$-[0]) =~ tr/\n//; print "$ARGV:",$l+1,"\n" unless $& =~ /emptyPlaceholder/ }' $(g -l '<UniformSlot')
 ```
 
-**S3 · App Router: an `emptyPlaceholder` prop** — it does not exist there; every hit is a bug.
+**S3 · App Router: an `emptyPlaceholder` prop.** It does not exist there; every hit is a bug.
 
 ```bash
 g 'emptyPlaceholder='
@@ -151,7 +150,7 @@ g 'emptyPlaceholder='
 g '\.items\??\.length|startsWith\(.placeholder|includes\(.placeholder'
 ```
 
-**S5 · A region hidden while its slot is empty** (an aside, an actions bar) — no drop target in the
+**S5 · A region hidden while its slot is empty** (an aside, an actions bar): no drop target in the
 editor. Read the S4 hits and any `hasX &&` guard around a `UniformSlot`.
 
 **S6 · Spacing that the editor's marker elements disturb.** Review the hits that style a slot's
@@ -161,8 +160,8 @@ container — utility classes in TSX and sibling selectors in CSS:
 g 'space-[xy]-|divide-[xy]|first:|last:|:first-child|:last-child|nth-child|>[[:space:]]*\*[[:space:]]*\+[[:space:]]*\*'
 ```
 
-**S7 · Page Router: a `wrapperComponent` defined inside a component body** — remounts its subtree on
-every editor update:
+**S7 · Page Router: a `wrapperComponent` defined inside a component body.** It remounts its subtree
+on every editor update ([why](slot-placeholders.md#wrapping-slot-items)):
 
 ```bash
 g '^[[:space:]]+(const|function)[[:space:]]+[[:alnum:]_]+[[:space:]]*=?[[:space:]]*\([[:space:]]*\{[[:space:]]*items\b'
@@ -190,7 +189,7 @@ g 'localStorage|sessionStorage|document\.cookie|cookies\('
 ```
 
 **I4 · Items behind interaction with no editor path in.** Components holding an open flag or an
-active index, and reading no editor signal at all — nothing forces them open, follows the
+active index and reading no editor signal at all: nothing forces them open, follows the
 selection, or offers editor controls:
 
 ```bash
@@ -198,8 +197,8 @@ for f in $(g -l 'useState(<[^>]*>)?\((0|false)\)'); do grep -qE 'previewMode|isE
 ```
 
 **I5 · Editor-only controls that cannot be clicked.** Files that render buttons and read the Edit-tab
-signal but never set `IS_RENDERED_BY_UNIFORM_ATTRIBUTE`. Read whether the buttons are editor-only —
-ordinary arrows next to an autoplay gate are not a finding; an editor-only picker without the
+signal but never set `IS_RENDERED_BY_UNIFORM_ATTRIBUTE`. Read whether the buttons are editor-only.
+Ordinary arrows next to an autoplay gate are not a finding; an editor-only picker without the
 attribute is, because Canvas turns its clicks into selections:
 
 ```bash
@@ -212,13 +211,13 @@ for f in $(g -l '<button'); do grep -qE 'previewMode|isEditTab' "$f" && ! grep -
 g 'inert|pointer-events-none|pointer-events:[[:space:]]*none|pointerEvents'
 ```
 
-**I7 · A hand-built editing marker** — every hit that constructs one is a live-site bug:
+**I7 · A hand-built editing marker.** Every hit that constructs one is a live-site bug:
 
 ```bash
 g '_contextualEditing'
 ```
 
-**I8 · Instances rendered twice** — responsive duplicates render one slot in two places:
+**I8 · Instances rendered twice.** Responsive duplicates render one slot in two places:
 
 ```bash
 g 'md:hidden|hidden md:|lg:hidden|hidden lg:'
@@ -242,13 +241,8 @@ project's viewports with the breakpoints in the design tokens or CSS framework c
 npx uniform canvas preview-viewport list --format yaml   # needs the project's API credentials
 ```
 
-If the CLI cannot reach the project, record it as a manual check for the user.
-
-**P3 · Playground route indexable:**
-
-```bash
-grep -rn 'playground' public/robots.txt app/robots.* 2>/dev/null
-```
+Report a mismatch, or a CLI that cannot reach the project, under *Needs a manual check*. The
+viewports are a project setting the user changes; do not push them.
 
 ## Production is unchanged
 
@@ -260,8 +254,8 @@ curl -s http://localhost:3000/some-page > after.html    # after the fixes
 diff before.html after.html
 ```
 
-Only differences you intended may appear — a removed empty wrapper, a `null` where an empty
-`<a>` was. No placeholder text, no editor controls, no `contentEditable` and no
+Only differences you intended may appear, such as a removed empty wrapper or a `null` where an
+empty `<a>` was. No placeholder text, no editor controls, no `contentEditable` and no
 `data-uniform-placeholder` on a published page.
 
 ## Check in Canvas
@@ -296,8 +290,8 @@ components it applies to.
       never wrapped in a value-only condition
 - [ ] Empty in production returns `null` or omits the element; empty in the Edit tab shows a
       placeholder the size of the real content
-- [ ] Each slot has a sized placeholder — in the App Router resolver, or `emptyPlaceholder` on
-      the Page Router — or is deliberately turned off
+- [ ] Each slot has a sized placeholder (in the App Router resolver, or `emptyPlaceholder` on
+      the Page Router), or is deliberately turned off
 - [ ] Slot children are spaced with `gap`, not sibling selectors
 - [ ] Slot emptiness and counts filter placeholder items with `isComponentPlaceholderId`
 - [ ] Hidden content stays mounted, hidden with CSS
