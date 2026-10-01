@@ -39,13 +39,15 @@ const box = (style: CSSProperties): Placeholder => ({
   component: () => <div style={{ width: "100%", ...style }} />,
 });
 
-const bySlot: Record<string, Record<string, Placeholder>> = {
-  page: { header: box({ height: 160 }), content: box({ minHeight: "60vh" }), footer: box({ height: 160 }) },
-  buttonGroup: { buttons: box({ width: 200, height: 52 }) }, // a row: needs a width
-  table: { rows: { component: () => <tr style={{ height: 64 }} /> } }, // must be valid in <tbody>
-  card: { media: { component: null } }, // this layout has no media area
-};
+// Parent component type → slot name → placeholder, filled in from the project's component
+// definitions and sized per the table below. Each entry is one of:
+//   box({ minHeight: … })                    a vertical slot
+//   box({ width: …, height: … })             a slot in a row
+//   { component: () => <tr style={…} /> }    a slot inside table markup
+//   { component: null }                      an optional slot the layout has no room for
+const bySlot: Record<string, Record<string, Placeholder>> = {};
 
+// Anything unlisted gets roughly the height of a typical child in the project.
 export const resolveEmptyPlaceholder: ResolveEmptyPlaceholder = ({ parentComponent, slotName }) =>
   bySlot[parentComponent.type]?.[slotName] ?? box({ minHeight: 80 });
 ```
@@ -68,9 +70,12 @@ export const resolveEmptyPlaceholder: ResolveEmptyPlaceholder = ({ parentCompone
 ## Page Router: per slot
 
 ```tsx
-<UniformSlot name="content" emptyPlaceholder={<div style={{ minHeight: 120 }} />} />
-<UniformSlot name="buttons" emptyPlaceholder={<div style={{ width: 200, height: 52 }} />} />
-<UniformSlot name="media" emptyPlaceholder={null} />
+// A vertical slot: about the height of a typical child
+<UniformSlot name={slotName} emptyPlaceholder={<div style={{ minHeight: 120 }} />} />
+// A slot in a row: a width as well as a height
+<UniformSlot name={slotName} emptyPlaceholder={<div style={{ width: 200, height: 52 }} />} />
+// An optional slot the layout has no room for
+<UniformSlot name={slotName} emptyPlaceholder={null} />
 ```
 
 The SDK renders `emptyPlaceholder` only while editing, and only in place of what the resolver

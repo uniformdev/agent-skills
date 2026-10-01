@@ -81,7 +81,7 @@ Work through the [new-component checklist](references/review-checks.md#checklist
   |---|---|---|
   | Force open in the Edit tab | Accordions, FAQs, disclosures, read-more blocks | The Edit tab is taller than the live page |
   | Follow the Canvas selection | Carousels, tabs, mega-menu categories, tooltips, hotspots, modals | On the App Router, a small hook on an internal Canvas message; name that dependency when offering the fix |
-  | Editor-only controls | Components without selection support; authors who work on the page rather than in the component tree | Extra UI in the Edit tab |
+  | Editor-only controls | In addition to following the selection, for authors who work on the page rather than in the component tree | Extra UI in the Edit tab |
   | Stop motion in the Edit tab | Autoplay, auto-advancing timers, countdown redirects, scroll-driven animation | None |
 
   A carousel needs stop motion and follow selection, plus editor controls for authors who work on

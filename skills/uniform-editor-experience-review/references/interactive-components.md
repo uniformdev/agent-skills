@@ -28,7 +28,7 @@ cannot tell why.
 
 ```tsx
 // Wrong: closed content is not in the DOM, and neither are its editor markers
-{isOpen && <div className="panel">{content}</div>}
+{isOpen && <div>{content}</div>}
 
 // Wrong (App Router UniformSlot): the slot child, markers included, is dropped for inactive tabs
 <UniformSlot slot={slots.tabs}>
@@ -46,7 +46,9 @@ cannot tell why.
 ```
 
 On the Page Router, do the same in a module-scope `wrapperComponent`:
-[slot-placeholders.md](slot-placeholders.md#wrapping-slot-items).
+[slot-placeholders.md](slot-placeholders.md#wrapping-slot-items). On the App Router, a client
+component that receives `<UniformSlot>` as `children` gets one child per slot item, because
+`UniformSlot` returns an array; wrap each one from `Children.toArray(children)`.
 
 A hidden item can be selected in the component tree but not clicked on the page, so pair this
 with one of the patterns below. Closed panels hidden with `inert` must also drop it while in
@@ -221,8 +223,8 @@ export function useCanvasEditorState(enabled: boolean): CanvasEditorState | unde
 - **It depends on an internal message.** The type is named `-internal`, and the script that sends
   it is served by Uniform, not shipped in the SDK, so it can change without an SDK release. Say so
   in a comment where the hook is defined, keep it in this one file, and keep the component usable
-  without it: editor controls (below) are the fallback. The review offers this pattern with that
-  trade-off named ([review-and-selection.md](review-and-selection.md#asking-which-fixes-to-apply)).
+  if the message changes: the editor controls below still work. The review offers this pattern
+  with that trade-off named ([review-and-selection.md](review-and-selection.md#asking-which-fixes-to-apply)).
 - Check it once in Canvas: select a slide in the component tree and confirm the carousel moves.
 
 The descendant map needs the children's data, which the App Router's `slots` prop does not carry.
@@ -241,7 +243,7 @@ const slideOf = context.isContextualEditing
 
 return (
   <CarouselTrack carouselId={component._id} slideOf={slideOf} inCanvas={context.isContextualEditing} …>
-    <UniformSlot slot={slots.slides}>{({ child, key }) => <div key={key} className="slide">{child}</div>}</UniformSlot>
+    <UniformSlot slot={slots.slides}>{({ child, key }) => <div key={key}>{child}</div>}</UniformSlot>
   </CarouselTrack>
 );
 ```
@@ -263,15 +265,15 @@ themselves.
 
 ## Editor-only controls
 
-When following the selection is not enough, for authors who work on the page rather than in the
-component tree or for a component with no selection support, render a small picker in the Edit
-tab and mark it so Canvas lets its clicks through:
+For authors who work on the page rather than in the component tree, add a small picker in the Edit
+tab and mark it so Canvas lets its clicks through. It adds to following the selection and does not
+replace it: with a picker alone, selecting a slide in the component tree still shows nothing.
 
 ```tsx
 import { IS_RENDERED_BY_UNIFORM_ATTRIBUTE } from "@uniformdev/canvas";
 
 {isEditTab && slideCount > 1 && (
-  <div className="editor-slide-picker" {...{ [IS_RENDERED_BY_UNIFORM_ATTRIBUTE]: "" }}>
+  <div {...{ [IS_RENDERED_BY_UNIFORM_ATTRIBUTE]: "" }}>
     {Array.from({ length: slideCount }, (_, i) => (
       <button key={i} type="button" aria-pressed={i === index} onClick={() => setIndex(i)}>
         {i + 1}

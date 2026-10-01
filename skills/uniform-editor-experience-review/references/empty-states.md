@@ -41,13 +41,13 @@ function Button({ label, icon }: ButtonProps) {
   widening it.
 
 **Optional text inside a component** needs the same treatment, one level down. `UniformText`
-renders its tag even when the value is empty, so a `<p className="mt-4">` around an empty
-subtitle leaves a gap in production. Gate the element on value *or* Edit tab — never on value
+renders its tag even when the value is empty, so an empty subtitle's `<p>` keeps its margin and
+leaves a gap in production. Gate the element on value *or* Edit tab — never on value
 alone, which removes the edit target:
 
 ```tsx
 {(subtitle?.value || isEditTab(context)) && (
-  <UniformText component={component} parameter={subtitle!} as="p" className="mt-4" placeholder="Subtitle (optional)" />
+  <UniformText component={component} parameter={subtitle!} as="p" placeholder="Subtitle (optional)" />
 )}
 ```
 
@@ -77,9 +77,9 @@ if (!url) {
 ```tsx
 type MediaPlaceholderProps = { label: string; width?: number; height?: number; aspectRatio?: string };
 
-// The size comes from the media's own dimensions; the look comes from the project's styles.
+// Only the size is set here, from the media's own dimensions; style the rest the project's way.
 export const MediaPlaceholder = ({ label, width, height, aspectRatio = "16 / 9" }: MediaPlaceholderProps) => (
-  <div className="media-placeholder" style={{ width: width ?? "100%", height, aspectRatio: height ? undefined : aspectRatio }}>
+  <div style={{ width: width ?? "100%", height, aspectRatio: height ? undefined : aspectRatio }}>
     {label}
   </div>
 );
@@ -136,7 +136,7 @@ const value = parameters.body?.value;
 const isEmpty = !value || isRichTextValueConsideredEmpty(value);
 
 if (isEmpty) {
-  return isEditTab(context) ? <p className="editor-hint">Add body text</p> : null;
+  return isEditTab(context) ? <p>Add body text</p> : null;
 }
 return <UniformRichText component={component} parameter={parameters.body!} />;
 ```

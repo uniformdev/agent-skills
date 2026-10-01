@@ -39,34 +39,33 @@ Server Component, so the playground page wraps it: a client frame receives the p
 `children`.
 
 ```tsx
-// components/playground/widths.ts
-/** Container widths to preview patterns at — take them from the design system, not from this list. */
-export const WIDTHS = { Full: "100%", LG: "1024px", MD: "768px", SM: "640px" } as const;
-export type Width = keyof typeof WIDTHS;
+// widths.ts
+/** Container widths to preview patterns at: "Full" plus the design system's container sizes. */
+export const WIDTHS: Record<string, string> = { Full: "100%" };
 
-/** Width a pattern opens at, by its root component type. */
-export const DEFAULT_WIDTH: Record<string, Width> = { card: "SM", button: "SM", testimonial: "MD" };
+/** Width a pattern opens at: root component type → a key of WIDTHS. */
+export const DEFAULT_WIDTH: Record<string, string> = {};
 ```
 
 ```tsx
-// components/playground/PatternFrame.tsx
+// PatternFrame.tsx
 "use client";
 
 import { useState, type ReactNode } from "react";
 import { IS_RENDERED_BY_UNIFORM_ATTRIBUTE } from "@uniformdev/canvas";
-import { DEFAULT_WIDTH, WIDTHS, type Width } from "./widths";
+import { DEFAULT_WIDTH, WIDTHS } from "./widths";
 
 // Canvas lets Edit-tab clicks through only inside this attribute. Keep it on the frame's own
 // controls, never on the element that holds the pattern.
 const chrome = { [IS_RENDERED_BY_UNIFORM_ATTRIBUTE]: "" };
 
 export function PatternFrame({ componentType, children }: { componentType?: string; children: ReactNode }) {
-  const [width, setWidth] = useState<Width>((componentType && DEFAULT_WIDTH[componentType]) || "Full");
+  const [width, setWidth] = useState((componentType && DEFAULT_WIDTH[componentType]) || "Full");
 
   return (
-    <div style={{ padding: 32, background: "#f4f4f5", minHeight: "100vh" }}>
-      <div {...chrome} style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", marginBottom: 16 }}>
-        {(Object.keys(WIDTHS) as Width[]).map((w) => (
+    <div>
+      <div {...chrome}>
+        {Object.keys(WIDTHS).map((w) => (
           <button key={w} type="button" aria-pressed={w === width} onClick={() => setWidth(w)}>
             {w}
           </button>
@@ -75,8 +74,8 @@ export function PatternFrame({ componentType, children }: { componentType?: stri
           {componentType ?? "pattern"} · {WIDTHS[width]}
         </span>
       </div>
-      <div style={{ maxWidth: WIDTHS[width], margin: "0 auto", background: "#fff" }}>{children}</div>
-      <p {...chrome} style={{ textAlign: "center", fontSize: 12, marginTop: 16 }}>
+      <div style={{ maxWidth: WIDTHS[width], margin: "0 auto" }}>{children}</div>
+      <p {...chrome}>
         Width narrows the pattern&apos;s container. Media-query breakpoints follow the preview&apos;s own
         width — switch them with Canvas&apos;s viewport buttons.
       </p>
@@ -89,9 +88,9 @@ In the playground page, keep everything the page already has (its other exports 
 `UniformPlayground`, `resolveEmptyPlaceholder` included) and add the frame around it:
 
 ```tsx
-// app/playground/[code]/page.tsx
+// The playground page
 import { resolvePlaygroundRoute } from "@uniformdev/next-app-router";
-import { PatternFrame } from "@/components/playground/PatternFrame";
+import { PatternFrame } from "<path>/PatternFrame";
 
 // …inside the existing page component, after `const { code } = await params;`
 // One extra fetch, only to label the frame with the pattern's root component type.
@@ -129,7 +128,7 @@ The frame body is the App Router `PatternFrame` above, saved as `FrameBody.tsx` 
 `widths.ts`. The decorator only reads the pattern's type and keys the frame by it:
 
 ```tsx
-// components/playground/PatternFrame.tsx
+// PatternFrame.tsx (Page Router)
 import { EMPTY_COMPOSITION } from "@uniformdev/canvas";
 import type { UniformPlaygroundDecorator } from "@uniformdev/canvas-react";
 import { FrameBody } from "./FrameBody";
@@ -147,9 +146,9 @@ export const PatternFrame: UniformPlaygroundDecorator = ({ children, data }) => 
 ```
 
 ```tsx
-// pages/playground.tsx — the path the preview handler's playgroundPath points at
+// The playground page: the path the preview handler's playgroundPath points at
 import { UniformPlayground } from "@uniformdev/canvas-react";
-import { PatternFrame } from "@/components/playground/PatternFrame";
+import { PatternFrame } from "<path>/PatternFrame";
 
 export default function PlaygroundPage() {
   // Also pass the project's contextualEditingDefaultPlaceholder here if <UniformComposition> sets one.

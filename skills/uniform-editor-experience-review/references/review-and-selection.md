@@ -10,34 +10,22 @@ In chat by default. Write it to a file when the user asks for one, or offer to w
 ```markdown
 # Editor experience review
 
-App Router (`@uniformdev/next-app-router` 20.80) · 11 components reviewed · 14 findings, 1 of them a live-site bug
+<SDK> (`<package>` <version>) · <N> components reviewed · <N> findings, <N> of them live-site bugs
 
-## Empty states
+## <Category>
 
-### Keep empty components visible — recommended
-- **Button** · `components/Button.tsx:21` · E1 — a button with no label renders nothing in every
-  mode, so a freshly dropped button vanishes and cannot be selected.
-  Fix: render it in the Edit tab with its label placeholder; the live site keeps rendering nothing.
+### <Fix type> — recommended
+- **<Component>** · `<file>:<line>` · <check ID> — <what the author sees or cannot do in Canvas>.
+  Fix: <the change in one sentence, and what the live site keeps>.
 
-### Text and rich-text placeholders — recommended
-- **RichText** · `components/RichText.tsx:14` · E5 — an empty body shows nothing in Canvas; this
-  SDK never renders `UniformRichText`'s placeholder. Fix: an Edit-tab hint when the value is empty.
-
-## Interactive
-
-### Live-site leaks — recommended · changes the live site
-- **Tabs** · `components/TabsClient.tsx:31` · I7 — the tab labels are built with a hand-made
-  editing marker, so they are `contentEditable` for every visitor. Fix: drop the marker and keep
-  the labels as plain text edited from the component tree, or render them through the slot.
+### <Fix type> — recommended · changes the live site
+- **<Component>** · `<file>:<line>` · <check ID> — <what visitors get today>. Fix: <the change>.
 
 ## No findings
-Hero, Page — reviewed; nothing to change.
+<Components> — reviewed; nothing to change.
 
 ## Needs a manual check
-- **DefaultNotFound** · `components/DefaultNotFound.tsx:4` · E7 — unmapped component types print
-  "Not Found" on the live site. Your call: show it in the Edit tab only, or leave it.
-- **Preview viewports** · P2 — the CLI could not reach the project; compare its viewports with the
-  design system's breakpoints (Mobile 360, Tablet 768, Desktop 1280 today).
+- **<Component or setting>** · <check ID> — <what the user has to decide or confirm, and why>.
 ```
 
 Rules for the report:
@@ -75,32 +63,20 @@ ask in one call:
 {
   "questions": [
     {
-      "question": "Which empty-state fixes should I apply?",
-      "header": "Empty states",
+      "question": "Which <category> fixes should I apply?",
+      "header": "<Category>",
       "multiSelect": true,
       "options": [
-        { "label": "Keep empty components visible (Recommended)", "description": "Button, Hero CTA — shown with placeholders in the Edit tab; unchanged on the live site" },
-        { "label": "Media placeholders (Recommended)", "description": "Image, Video — a placeholder the size of the media when no asset is set" },
-        { "label": "Text and rich-text placeholders (Recommended)", "description": "RichText, Card — hints for empty text the editor otherwise hides" }
-      ]
-    },
-    {
-      "question": "Which interactive-component fixes should I apply?",
-      "header": "Interactive",
-      "multiSelect": true,
-      "options": [
-        { "label": "Keep hidden items mounted (Recommended)", "description": "Carousel, Tabs, Accordion — inactive items stay in the page so they can be selected" },
-        { "label": "Stop motion in the Edit tab (Recommended)", "description": "Carousel — no autoplay in the Edit tab; Preview keeps it" },
-        { "label": "Reach every item (Recommended)", "description": "Carousel, Tabs follow the Canvas selection through an internal Canvas message that can change without an SDK release; Accordion opens in the Edit tab" },
-        { "label": "Live-site leaks (Recommended)", "description": "Tabs — labels are contentEditable on the live site today" }
+        { "label": "<Fix type> (Recommended)", "description": "<components> — <what changes for the author>" },
+        { "label": "<Fix type> (Recommended)", "description": "<components> — <what changes>; <what it depends on, if anything>" }
       ]
     }
   ]
 }
 ```
 
-An answer may include free text under "Other". Read it as instructions ("only the carousel",
-"skip Tabs for now") and adjust the selection before applying.
+An answer may include free text under "Other". Read it as instructions ("only this component",
+"skip that one for now") and adjust the selection before applying.
 
 ### Without one
 
@@ -110,13 +86,9 @@ report. `[x]` marks the recommended defaults:
 ```markdown
 Reply with the numbers to apply, `recommended`, or `all`:
 
-1. [x] Keep empty components visible — Button, Hero CTA
-2. [x] Media placeholders — Image, Video
-3. [x] Text and rich-text placeholders — RichText, Card
-4. [x] Keep hidden items mounted — Carousel, Tabs, Accordion
-5. [x] Stop motion in the Edit tab — Carousel
-6. [x] Reach every item — Carousel, Tabs, Accordion (follow-selection uses an internal Canvas message)
-7. [x] Live-site leaks — Tabs (changes the live site)
+1. [x] <Fix type> — <components>
+2. [x] <Fix type> — <components> (<what it depends on, if anything>)
+3. [x] <Fix type> — <components> (changes the live site)
 ```
 
 ### When not to ask

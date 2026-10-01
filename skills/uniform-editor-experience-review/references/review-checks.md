@@ -190,7 +190,9 @@ g 'localStorage|sessionStorage|document\.cookie|cookies\('
 
 **I4 · Items behind interaction with no editor path in.** Components holding an open flag or an
 active index and reading no editor signal at all: nothing forces them open, follows the
-selection, or offers editor controls:
+selection, or offers editor controls. Fix them with the pattern table in
+[SKILL.md](../SKILL.md#decision-rules): components that show one item at a time, such as carousels
+and tabs, follow the selection, and editor controls only add to that.
 
 ```bash
 for f in $(g -l 'useState(<[^>]*>)?\((0|false)\)'); do grep -qE 'previewMode|isEditTab|isContextualEditing|selectedComponentReference|forceOpen' "$f" || echo "$f"; done
