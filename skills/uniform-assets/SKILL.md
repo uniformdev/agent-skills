@@ -140,16 +140,17 @@ export default function uniformImageLoader({ src, width }: ImageLoaderProps) {
 }
 ```
 
+The loader works best registered in `next.config.ts`, which makes it the default
+for every `<Image>`:
+
 ```ts
 // next.config.ts
 images: { loader: "custom", loaderFile: "./lib/uniform-image-loader.ts" }
 ```
 
-In the App Router, register the loader in `next.config.ts` as above: `<Image>` is
-a Client Component, so a Server Component can't pass it a `loader` function prop. (From a
-Client Component or in the Pages Router, `loader={uniformImageLoader}` works
-too.) Then pass the plain asset URL, with intrinsic dimensions read off the raw
-item and defaults for external images:
+Then pass `<Image>` the plain asset URL, with intrinsic dimensions read off the
+raw item and defaults for external images. The same applies if you set a
+`loader` prop on a single image:
 
 ```tsx
 if (!item?.fields.url?.value) return null;
