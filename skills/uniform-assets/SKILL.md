@@ -11,7 +11,7 @@ description: >-
   responsive/transformed images with focal points.
 metadata:
   author: uniformdev
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Uniform assets
@@ -55,9 +55,10 @@ It is the most future-proof choice:
 - **No-ops transforms** for non-image assets and anything outside the Uniform
   Asset Library — external / other-DAM URLs pass through unchanged, so one code
   path is correct for every source.
-- **Auto-applies the asset's focal point** plus your resize/fit *when the image is
-  a Uniform DAM asset*. Those features "just start working" after a move to the
-  DAM, with **no code change**.
+- **Applies your resize/fit, and the asset's focal point on a crop,** *when the
+  image is a Uniform DAM asset*. Those features "just start working" after a move
+  to the DAM, with **no code change**. The focal point needs both `width` and
+  `height` (see below).
 
 Use the `imageFrom` and `AssetParamValue` from `@uniformdev/assets`
 
@@ -99,21 +100,79 @@ Safety rules:
 
 `transform` options (`ImageFromTransformProps`): `width?`, `height?`,
 `fit?: 'scale-down' | 'contain' | 'cover'`; and for `fit: 'cover'` also
-`focal: 'auto' | 'center' | { x, y }` (numbers 0–1). The asset's own focal point
-is respected automatically. Bare `imageFrom(asset).url()` extracts the URL with no
-transform.
+`focal: 'auto' | 'center' | { x, y }` (numbers 0–1). Bare `imageFrom(asset).url()`
+extracts the URL with no transform.
+
+### Focal point needs both width and height
+
+The CDN only crops to a focal point when you request **both `width` and
+`height`** with `fit: "cover"` (the default once both are set). It uses the
+asset's own focal point unless you pass `focal`. A width-only transform or a bare
+`.url()` resizes without cropping, so the focal point has no effect:
+
+```ts
+imageFrom(item).transform({ width: 800, height: 600 }).url();
+// → …/photo.jpg?width=800&height=600&fit=cover&focal=0.3x0.7
+imageFrom(item).transform({ width: 1920 }).url();
+// → …/photo.jpg?width=1920   (no crop, no focal point)
+```
 
 ### With `next/image`
 
-Enable the Uniform image host, then feed `imageFrom(...).url()` as `src`:
+The Uniform CDN already resizes and crops. **Never pass an `imageFrom(...)` URL to
+`<Image>` without `unoptimized`**: Next.js image optimization would process the
+image a second time, which on Vercel means paying for it twice. Pick one of two
+setups. Neither needs `images.remotePatterns`, which only applies to Next's
+built-in optimizer.
+
+**Default: a custom loader.** Next.js asks the loader for each responsive width
+and the Uniform CDN does the resizing. A loader receives `src`, `width` and
+`quality` but never a height, so it can't crop to the focal point.
+
+```ts
+// lib/uniform-image-loader.ts
+import type { ImageLoaderProps } from "next/image";
+import { imageFrom } from "@uniformdev/assets";
+
+export default function uniformImageLoader({ src, width }: ImageLoaderProps) {
+  // Non-Uniform URLs (external, /public) come back unchanged.
+  return imageFrom(src).transform({ width, fit: "scale-down" }).url();
+}
+```
+
+The loader works best registered in `next.config.ts`, which makes it the default
+for every `<Image>`:
 
 ```ts
 // next.config.ts
-images: { remotePatterns: [{ protocol: "https", hostname: "img.uniform.global" }] }
+images: { loader: "custom", loaderFile: "./lib/uniform-image-loader.ts" }
 ```
 
-Read intrinsic dimensions from the raw item (`item.fields.width?.value`) for DAM
-assets; fall back to sensible defaults for external images.
+Then pass `<Image>` the plain asset URL, with intrinsic dimensions read off the
+raw item and defaults for external images. The same applies if you set a
+`loader` prop on a single image:
+
+```tsx
+if (!item?.fields.url?.value) return null;
+return (
+  <Image
+    src={item.fields.url.value}
+    alt={item.fields.title?.value ?? ""}
+    width={item.fields.width?.value ?? 1200}
+    height={item.fields.height?.value ?? 800}
+    sizes="(max-width: 768px) 100vw, 50vw"
+  />
+);
+```
+
+**When the focal crop matters** (a hero, a fixed-ratio card): build one cropped
+URL with `imageFrom` and mark it `unoptimized`. You get the focal point, but a
+single size rather than a responsive `srcset`.
+
+```tsx
+const src = imageFrom(item).transform({ width: 1600, height: 900, fit: "cover" }).url();
+return <Image src={src} alt={item.fields.title?.value ?? ""} width={1600} height={900} unoptimized />;
+```
 
 ## 4. Read other fields — off the raw item
 
@@ -172,4 +231,6 @@ element has `.fields`) — which is exactly what `imageFrom(value[0])` wants.
 - Rendering, `ComponentProps`, slots: `uniform-nextjs-app-router` skill,
   `references/components.md` (§ "Asset parameters").
 - Uniform docs: "Rendering assets" — https://docs.uniform.app/docs/guides/composition/manage-assets/rendering-assets
+- Uniform support: "Using Uniform Assets with Next.js" (loader vs. `unoptimized`,
+  focal point limits) — https://support.uniform.dev/articles/6650602246-using-uniform-assets-with-next-js
 - Modeling parameters/slots well: `uniform-experience-modeling` skill.
