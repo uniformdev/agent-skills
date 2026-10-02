@@ -1,0 +1,29 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.section-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 2rem;
+}
+
+/* Vertical rhythm between the blocks an editor places in a section. */
+.stack > * + * {
+  margin-top: 1.5rem;
+}
+
+.carousel {
+  position: relative;
+  overflow: hidden;
+}
+
+.accordion-panel {
+  padding: 1rem 0;
+}
+
+.tab-list {
+  display: flex;
+  gap: 1rem;
+}
