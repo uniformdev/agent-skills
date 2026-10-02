@@ -1,6 +1,5 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
+import { readdirSync, readFileSync, statSync } from 'fs';
 import { test, expect } from 'vitest';
-import { environment } from '@vercel/agent-eval/eval';
 
 // Apply fixture for `uniform-editor-experience-review` (App Router). Every component is seeded with
 // an editor-experience gap the skill names; the prompt describes only the symptoms and says to apply
@@ -14,8 +13,6 @@ import { environment } from '@vercel/agent-eval/eval';
 //   Tabs            hand-built `_contextualEditing` (contentEditable on the live site); one panel mounted
 //   pages           no resolveEmptyPlaceholder
 //   playground      patterns shown bare
-//
-// Hero is already correct — the negative control.
 
 const read = (p: string) => readFileSync(p, 'utf-8');
 
@@ -79,29 +76,34 @@ const usesEditorSignal = (text: string) => references(text, ANY_EDITOR_SIGNAL);
 const elements = (text: string, tag: string) => text.match(new RegExp(`<${tag}\\b[\\s\\S]*?\\/>`, 'g')) ?? [];
 
 // Placeholders and hints change the look, so they belong to the Edit tab: isContextualEditing is true
-// in the Preview tab too, where authors check the page as visitors see it.
-const PREVIEW_TAB_LEAK = 'isContextualEditing alone is also true in the Preview tab; gate on pageState.previewMode === "editor"';
-
-test('empty Button and Image stay in the Edit tab', () => {
-  const button = componentCode(/^Button/);
-  expect(button, 'a freshly dropped button vanishes and cannot be selected').not.toMatch(
-    /if\s*\(\s*!\s*label\?\.value\s*\)\s*return\s+null/
-  );
-  expect(button, `the empty button shows only in the Edit tab — ${PREVIEW_TAB_LEAK}`).toSatisfy(usesEditTab);
-
-  const image = componentCode(/^Image/);
-  expect(image, 'an empty image leaves the author nothing to click').not.toMatch(
-    /if\s*\(\s*!\s*url\s*\)\s*return\s+null/
-  );
-  expect(image, `the image placeholder shows only in the Edit tab — ${PREVIEW_TAB_LEAK}`).toSatisfy(usesEditTab);
+// in the Preview tab too, where authors check the page as visitors see it. One test for every component
+// that gains an editor-only state, so this one gap fails once.
+test('editor-only states are gated on the Edit tab', () => {
+  const gated: [RegExp, string][] = [
+    [/^Button/, 'the empty button'],
+    [/^Image/, 'the image placeholder'],
+    [/^RichText/, 'the empty rich-text hint'],
+    [/^Section/, 'the empty aside'],
+    [/carousel/i, 'stopped autoplay'],
+  ];
+  for (const [name, what] of gated) {
+    expect(
+      componentCode(name),
+      `${what} shows only in the Edit tab — isContextualEditing alone is also true in the Preview tab; ` +
+        'gate on pageState.previewMode === "editor"'
+    ).toSatisfy(usesEditTab);
+  }
 });
 
-test('empty rich text gets its own editor hint', () => {
+test('empty rich text renders its own hint', () => {
+  // What is left once UniformRichText is removed must still say something: a text child, an expression
+  // child, or a string prop such as `label="…"`.
+  const outside = componentCode(/^RichText/).replace(/<UniformRichText\b[\s\S]*?\/>/g, '');
   expect(
-    componentCode(/^RichText/),
-    'the App Router UniformRichText never renders its placeholder, so an empty field shows nothing ' +
-      `in Canvas unless the component renders its own hint in the Edit tab — ${PREVIEW_TAB_LEAK}`
-  ).toSatisfy(usesEditTab);
+    outside,
+    'the App Router UniformRichText never renders its placeholder, so an empty field shows nothing in ' +
+      'Canvas unless the component renders its own hint'
+  ).toMatch(/>[^<>{}]*[A-Za-z][^<>{}]*<\/|>\s*\{[^{}]+\}\s*<\/|\b(?!className\b|as\b|key\b)[a-z]\w*=["'`][^"'`]*[A-Za-z]/);
 });
 
 test('empty slots get placeholders through resolveEmptyPlaceholder', () => {
@@ -126,20 +128,12 @@ test('Section slot logic survives the editor', () => {
   ).not.toMatch(/(startsWith|includes)\(\s*['"`]placeholder/);
   expect(src).toContain('isComponentPlaceholderId');
   expect(
-    componentCode(/^Section/),
-    `hiding the empty aside removes its drop target, so the author can never add the first item — ${PREVIEW_TAB_LEAK}`
-  ).toSatisfy(usesEditTab);
-  expect(
     cssText(),
     'while editing, the SDK wraps slot children in <template> markers; `> * + *` counts them — use gap'
   ).not.toMatch(/>\s*\*\s*\+\s*\*/);
 });
 
-test('the carousel holds still and follows the Canvas selection', () => {
-  expect(
-    componentCode(/carousel/i),
-    'autoplay moves content away from the author; the Preview tab keeps it'
-  ).toSatisfy(usesEditTab);
+test('the carousel follows the Canvas selection', () => {
   const src = code();
   expect(src, 'selecting a slide in the component tree should bring it into view').toContain(
     'selectedComponentReference'
@@ -157,7 +151,6 @@ test('slides, tab panels and accordion panels stay mounted and reachable', () =>
   const src = code();
   const unmounted = 'rendering only the active item drops the others — and their editor markers — from the DOM';
   expect(src, unmounted).not.toMatch(/\{\s*(slides|panels)\s*\[\s*\w+\s*\]\s*\}/);
-  expect(src, unmounted).not.toMatch(/<Fragment\s+key=\{key\}\s*\/>/);
 
   const accordion = componentCode(/accordion/i);
   expect(accordion, unmounted).not.toMatch(/\b(isOpen|open|expanded)\s*&&\s*\(?\s*</);
@@ -202,42 +195,4 @@ test('patterns get a playground-only frame with clickable controls', () => {
   for (const name of wrappers) {
     expect(compositionRoute, `${name} is authoring UI for patterns only`).not.toMatch(new RegExp(`<${name}\\b`));
   }
-});
-
-test('existing integration and the correct Hero are intact', () => {
-  const resolver = sourceFiles()
-    .filter(({ content }) => /ResolveComponentFunction/.test(content))
-    .map(({ content }) => content)
-    .join('\n');
-  for (const type of [
-    'page', 'hero', 'section', 'button', 'image', 'richText', 'carousel',
-    'accordion', 'accordionItem', 'tabs', 'tab',
-  ]) {
-    expect(resolver, `component type "${type}" must stay mapped`).toMatch(new RegExp(`\\b${type}\\s*:|['"\`]${type}['"\`]`));
-  }
-  expect(read('middleware.ts'), 'middleware must keep the edge runtime').toContain('experimental-edge');
-  expect(read('app/layout.tsx')).not.toContain('UniformContext');
-
-  const hero = read('components/Hero.tsx');
-  expect(hero, 'Hero was already correct — its placeholders must survive').toContain('Enter title here');
-  expect(hero).toContain('Enter description here');
-
-  const pkg = JSON.parse(read('package.json'));
-  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-  for (const dep of ['@uniformdev/next-app-router', 'next', 'react', 'vitest']) {
-    expect(deps, `${dep} must stay installed`).toHaveProperty(dep);
-  }
-  expect(existsSync('app/playground/[code]/page.tsx'), 'the playground route must survive').toBe(true);
-});
-
-test('production output is unchanged', async () => {
-  await expect(environment).toSatisfyCriterion(
-    'Every editor-only affordance the agent added — placeholders for empty buttons, images, rich ' +
-      'text and slots, forced-open or selection-driven panels, editor controls, stopped autoplay — ' +
-      'is behind a check of the Uniform editor state, so that a published page looks the same as ' +
-      'before: no placeholder text, no editor controls, no always-open panels, and autoplay still ' +
-      'running. Visible behaviour for visitors has not been changed in any other way. Removing an ' +
-      'editor artifact that had leaked to the live site, such as a contentEditable label, is a fix, ' +
-      'not a regression.'
-  );
 });

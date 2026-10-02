@@ -21,7 +21,6 @@ recipe uses `perl -0777` to read each file whole.
 
 Findings are grouped into four categories of up to four fix types each. The fix type is the unit
 the user selects. **Foundations** are not offered: they are applied when a selected fix needs them.
-E7 and P2 are not fix types either; their findings go under *Needs a manual check* in the report.
 
 | Category | Fix type | Checks | Default |
 |---|---|---|---|
@@ -73,8 +72,7 @@ g 'isContextualEditing'
 ## E — Empty states · [empty-states.md](empty-states.md)
 
 **E1 · Components that return `null` with no editor gate anywhere in the file** ("drops in and
-vanishes"). The fix adds the Edit-tab gate to the existing condition. A condition that also hides
-something a visitor would see (an icon-only button) goes under *Needs a manual check*.
+vanishes"):
 
 ```bash
 for f in $(g -l 'return null'); do grep -qE 'isContextualEditing|previewMode|isEditTab' "$f" || echo "$f"; done
@@ -117,7 +115,7 @@ perl -0777 -ne 'while(/<UniformText\b.*?\/>/gs){ my $l = substr($_,0,$-[0]) =~ t
 
 **E7 · A "component not found" fallback that renders on the live site.** Read the resolver's
 fallback component. Hiding it changes what visitors see, so report it under *Needs a manual check*
-and let the user decide.
+and leave it unchanged, also when told to apply everything.
 
 ```bash
 g 'NotFound|NotImplemented|not found|not implemented'
@@ -190,9 +188,8 @@ g 'localStorage|sessionStorage|document\.cookie|cookies\('
 
 **I4 · Items behind interaction with no editor path in.** Components holding an open flag or an
 active index and reading no editor signal at all: nothing forces them open, follows the
-selection, or offers editor controls. Fix them with the pattern table in
-[SKILL.md](../SKILL.md#decision-rules): components that show one item at a time, such as carousels
-and tabs, follow the selection, and editor controls only add to that.
+selection, or offers editor controls. Fix them with the
+[pattern table](../SKILL.md#decision-rules).
 
 ```bash
 for f in $(g -l 'useState(<[^>]*>)?\((0|false)\)'); do grep -qE 'previewMode|isEditTab|isContextualEditing|selectedComponentReference|forceOpen' "$f" || echo "$f"; done
@@ -281,20 +278,3 @@ Open a composition that uses each changed component, and a pattern in the playgr
 
 If you cannot open Canvas yourself, say so, and give whoever can this checklist with the
 components it applies to.
-
-## Checklist for a new component
-
-- [ ] Every text value renders through `UniformText` / `UniformRichText` with a `placeholder`,
-      never wrapped in a value-only condition
-- [ ] Empty in production returns `null` or omits the element; empty in the Edit tab shows a
-      placeholder the size of the real content
-- [ ] Each slot has a sized placeholder (in the App Router resolver, or `emptyPlaceholder` on
-      the Page Router), or is deliberately turned off
-- [ ] Slot children are spaced with `gap`, not sibling selectors
-- [ ] Slot emptiness and counts filter placeholder items with `isComponentPlaceholderId`
-- [ ] Hidden content stays mounted, hidden with CSS
-- [ ] Motion stops in the Edit tab
-- [ ] Every item behind interaction can be reached: forced open, following selection, or through
-      editor controls carrying `IS_RENDERED_BY_UNIFORM_ATTRIBUTE`
-- [ ] `inert` and `pointer-events: none` are dropped while in Canvas
-- [ ] Every editor-only branch is gated, and the gate matches the tab

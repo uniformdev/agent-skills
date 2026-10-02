@@ -127,7 +127,12 @@ The two SDKs differ here:
 
 In editor renders the App Router SDK marks only `text` parameters with `_contextualEditing`, and
 its `UniformRichText` renders the placeholder and the empty-value output only for a marked
-parameter. Render your own hint in the Edit tab:
+parameter. Render your own hint in the Edit tab.
+
+**Add `@uniformdev/richtext` to `package.json`** if it is not listed, at the version of the
+project's other `@uniformdev` packages
+([uniform-sdk](../../uniform-sdk/SKILL.md#pin-all-uniform-packages-to-the-same-version)). The SDK
+depends on it, so the import resolves without the entry under npm and breaks under pnpm.
 
 ```tsx
 import { isRichTextValueConsideredEmpty } from "@uniformdev/richtext";
@@ -141,8 +146,8 @@ if (isEmpty) {
 return <UniformRichText component={component} parameter={parameters.body!} />;
 ```
 
-The hint sits inside the component, so clicking it selects the component and the author edits
-the rich text in the parameter panel.
+The hint sits inside the component, so clicking it selects the component and the author edits the
+rich text in the parameter panel.
 
 ## Values that are not visible
 
@@ -165,9 +170,3 @@ effect: screen readers read the raw value to visitors.
   component or navigation gate is needed. The Preview tab navigates as the live site does.
 - **Link targets** are edited in the parameter panel. A link with no target still needs its label
   visible in the Edit tab so there is something to select.
-
-## "Component not found"
-
-A resolver fallback that prints "not found" for unmapped types also shows on the live site. Report
-it under *Needs a manual check* (E7) and leave the decision to the user; if they want it hidden
-from visitors, render the message only when `isEditTab(context)`.

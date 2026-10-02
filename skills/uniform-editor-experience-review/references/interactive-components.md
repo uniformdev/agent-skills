@@ -48,7 +48,8 @@ cannot tell why.
 On the Page Router, do the same in a module-scope `wrapperComponent`:
 [slot-placeholders.md](slot-placeholders.md#wrapping-slot-items). On the App Router, a client
 component that receives `<UniformSlot>` as `children` gets one child per slot item, because
-`UniformSlot` returns an array; wrap each one from `Children.toArray(children)`.
+`UniformSlot` returns an array (`null` when the slot has no items); wrap each one from
+`Children.toArray(children)`.
 
 A hidden item can be selected in the component tree but not clicked on the page, so pair this
 with one of the patterns below. Closed panels hidden with `inert` must also drop it while in
@@ -84,9 +85,6 @@ blocks.
 ```tsx
 const isOpen = isEditTab || openIndexes.includes(index);
 ```
-
-Without it, a closed panel cannot be opened from the page in the Edit tab: clicking the toggle
-selects the item instead of toggling it.
 
 Tooltips, hotspots, modals and drawers cannot all be open at once without covering the page. Open
 one when it, or anything inside it, is selected (the next pattern). A modal can instead render its
@@ -223,8 +221,7 @@ export function useCanvasEditorState(enabled: boolean): CanvasEditorState | unde
 - **It depends on an internal message.** The type is named `-internal`, and the script that sends
   it is served by Uniform, not shipped in the SDK, so it can change without an SDK release. Say so
   in a comment where the hook is defined, keep it in this one file, and keep the component usable
-  if the message changes: the editor controls below still work. The review offers this pattern
-  with that trade-off named ([review-and-selection.md](review-and-selection.md#asking-which-fixes-to-apply)).
+  if the message changes: the editor controls below still work.
 - Check it once in Canvas: select a slide in the component tree and confirm the carousel moves.
 
 The descendant map needs the children's data, which the App Router's `slots` prop does not carry.

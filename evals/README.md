@@ -211,7 +211,7 @@ the project state.
 |---|---|---|---|
 | `nextjs-app-router-setup` | `uniform-nextjs-app-router` | greenfield | v2 SDK choice, edge middleware, `uniform/[code]` route, no `UniformContext` in layout, `resolveComponent` mapping |
 | `nextjs-app-router-add-component` | `uniform-nextjs-app-router` | brownfield + judge | extending a correct project: slot rendering via `UniformSlot`, `UniformText` (not Page Router `parameterId`), no regression to middleware/layout/mappings; judge grades RSC idioms |
-| `nextjs-editor-experience` | `uniform-editor-experience-review` | brownfield apply + judge | the review workflow's apply path on a seeded App Router component set: empty components, media and rich text kept in the editor behind an Edit-tab (`previewMode`) gate, `resolveEmptyPlaceholder` and `isComponentPlaceholderId` for slots, carousel/tab/accordion items kept mounted and reachable (selection followed over the Canvas channel), no hand-built `_contextualEditing`, a playground-only pattern frame with clickable controls; judge grades production-unchanged |
+| `nextjs-editor-experience` | `uniform-editor-experience-review` | brownfield apply, deterministic | the review workflow's apply path on a seeded App Router component set: editor-only states gated on the Edit tab (`previewMode`), an own hint for empty rich text, `resolveEmptyPlaceholder` and `isComponentPlaceholderId` for slots, `gap` instead of `> * + *`, carousel selection followed over the Canvas channel, slides, tab panels and accordion panels kept mounted, no hand-built `_contextualEditing`, a playground-only pattern frame with clickable controls |
 | `nextjs-navigation-mega-menu` | `uniform-navigation` | brownfield + judge | building a mega menu in a project with no navigation at all: reading child data through the composition cache and wiring it to `UniformComposition` (the optional-prop silent-null trap), rendering the active panel through an `_id`-filtered `UniformSlot` rather than rebuilding children, inline-editable labels, a client component for hover state, `aria-expanded` + Escape; judge grades variant branching, mobile sections, and `inert` on closed panels |
 | `mesh-data-connector` | `uniform-mesh` | greenfield + judge, 4 agents | building a Mesh data connector from scratch: a manifest declaring a data connector, `useMeshLocation` + `@uniformdev/design-system` UI (not hand-rolled), data source + resource editors, `MeshApp` provider, `"use client"` for App Router; judge grades secrets handling and design-system UI |
 | `forms-add-form` | `uniform-forms` | brownfield + judge | adding a newsletter signup form: fields as separate components (not one monolithic form), new types registered in `resolveComponent`, namespaced/labelled `fields` payload, a generic (non-hardcoded) API handler, server-side re-validation, no `alert()`/`confirm()`, `aria-live` status, personalization quirk set client-side only after a 2xx |
@@ -268,11 +268,13 @@ Notes on reading particular fixtures:
   `uniform-data/` YAML. Run artifacts stay local under the git-ignored `evals/results/`.
 - **`nextjs-editor-experience` runs a review workflow headless.** The skill normally stops for the user to
   pick fixes; the prompt says to apply everything recommended (the skill's own skip-the-question rule) and
-  describes only symptoms, so the fixes need knowledge the fixture cannot teach by example. `Hero` is already
-  correct and must come out unchanged. It stages `uniform-nextjs-app-router` alongside, for the same reason
-  as the navigation fixture. One baseline run and two with-skill runs (Vercel sandbox, Claude Code
-  on Sonnet 4.6): baseline 2/10 in 424 s; with-skill 10/10 in 940 s and 9/10 in 658 s, where the
-  miss was the stylesheet check S6 (the agent never ran its grep, so `> * + *` stayed).
+  describes only symptoms, so the fixes need knowledge the fixture cannot teach by example. It stages
+  `uniform-nextjs-app-router` alongside, for the same reason as the navigation fixture. Only checks that fail
+  without the skill are kept. A cold agent already keeps empty components and regions visible in the editor
+  and forces the accordion open, but gates them on `isContextualEditing`, so the Edit-tab gate is asserted
+  once across every component that gains an editor-only state. One baseline and two with-skill runs
+  (Vercel sandbox, Claude Code on Sonnet 4.6): baseline 0/8 in 657 s, with-skill 8/8 in 730 s and
+  8/8 in 641 s.
 - **Assertions strip comments before matching**, so an agent that quotes a rule back in a comment is
   not credited — or failed — for agreeing with it.
 - **The automations fixtures use the full discovery skip set** (`.claude`, `.agents`, `.cursor`,

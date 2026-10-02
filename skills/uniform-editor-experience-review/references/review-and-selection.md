@@ -36,44 +36,22 @@ Rules for the report:
 - **Mark live-site bugs** in the fix-type heading.
 - **List the components with no findings.**
 - **Omit empty categories and fix types.** No "Slots: nothing found" sections.
-- Findings the agent should not decide or cannot confirm from code alone (E7, a hide-when-empty
-  guard that also hides visible content, preview viewport settings, anything that needs a running
-  Canvas) go under *Needs a manual check*, not into a fix type.
+- Findings the agent should not decide or cannot confirm from code alone go under *Needs a manual
+  check*, not into a fix type.
 
 ## Asking which fixes to apply
 
 ### With a multi-select question tool
 
 Where the agent has a structured question tool with multi-select (Claude Code's `AskUserQuestion`),
-ask in one call:
+ask in one call: one question per category that has findings, in the order Empty states, Slots,
+Interactive, Playground, and one option per fix type with findings.
 
-- **One question per category** that has findings, in the order Empty states, Slots, Interactive,
-  Playground — at most four, which is the tool's per-call limit.
-- **One option per fix type** with findings, at most four per question. If a category ever has
-  more, merge the two smallest.
 - **Label**: the fix type, with "(Recommended)" appended when its default is recommended. **Description**:
   the components it touches and what changes for the author.
 - **Name what a fix depends on** in its description, so the user decides with it in view: on the
   App Router, following the selection relies on an internal Canvas message; on the Page Router,
   the pattern frame relies on the experimental `decorators` prop.
-- **Header**: the category name, 12 characters or fewer.
-- A question needs at least two options. When a category has a single fix type, add `Not now`.
-
-```json
-{
-  "questions": [
-    {
-      "question": "Which <category> fixes should I apply?",
-      "header": "<Category>",
-      "multiSelect": true,
-      "options": [
-        { "label": "<Fix type> (Recommended)", "description": "<components> — <what changes for the author>" },
-        { "label": "<Fix type> (Recommended)", "description": "<components> — <what changes>; <what it depends on, if anything>" }
-      ]
-    }
-  ]
-}
-```
 
 An answer may include free text under "Other". Read it as instructions ("only this component",
 "skip that one for now") and adjust the selection before applying.

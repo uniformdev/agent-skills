@@ -28,9 +28,9 @@ design system's breakpoints rather than the defaults. Read them with
 is the user's call: in the project settings, or through `uniform canvas preview-viewport` /
 `uniform sync` (the `previewViewport` entity) if the project keeps them in source control.
 
-The frame's buttons receive clicks in the Edit tab only inside `IS_RENDERED_BY_UNIFORM_ATTRIBUTE`.
-Put it on the frame's chrome (the control row, the label, the hint), never on an ancestor of the
-pattern: [interactive-components.md](interactive-components.md#in-the-edit-tab-clicks-select).
+Put `IS_RENDERED_BY_UNIFORM_ATTRIBUTE` on the frame's chrome (the control row, the label, the
+hint), never on an ancestor of the pattern:
+[interactive-components.md](interactive-components.md#editor-only-controls).
 
 ## App Router
 
@@ -55,8 +55,6 @@ import { useState, type ReactNode } from "react";
 import { IS_RENDERED_BY_UNIFORM_ATTRIBUTE } from "@uniformdev/canvas";
 import { DEFAULT_WIDTH, WIDTHS } from "./widths";
 
-// Canvas lets Edit-tab clicks through only inside this attribute. Keep it on the frame's own
-// controls, never on the element that holds the pattern.
 const chrome = { [IS_RENDERED_BY_UNIFORM_ATTRIBUTE]: "" };
 
 export function PatternFrame({ componentType, children }: { componentType?: string; children: ReactNode }) {
@@ -105,10 +103,9 @@ return (
 ```
 
 - **The type costs a fetch.** `UniformPlayground` resolves the pattern itself and ignores a
-  `resolveRoute` prop, so the frame makes its own call. `resolvePlaygroundRoute` fetches with
-  `cache: 'no-cache'` and returns `route: undefined` when the fetch fails or finds nothing; it
-  throws only if `code` cannot be decoded. If the label is not worth the request, drop
-  `componentType` and the per-type default.
+  `resolveRoute` prop, so the frame makes its own uncached call, which returns `route: undefined`
+  when it fails or finds nothing. If the label is not worth the request, drop `componentType` and
+  the per-type default.
 - **Selected width survives edits.** Canvas refreshes the route after each change; the frame is the
   same client component in the same place, so its state is kept.
 - The SDK serves the playground only in draft mode, so visitors do not reach the frame.
@@ -121,8 +118,7 @@ rendered pattern and receive its root instance as `data`.
 > **Experimental.** The prop's JSDoc reads: "@deprecated This feature is not stable yet and might
 > be changed or removed in a minor release. Do not use it in production environments." It is
 > still the SDK's only way to decorate the playground. Keep the decorator in one file so a change
-> is a one-file fix, and name the dependency when offering the frame
-> ([review-and-selection.md](review-and-selection.md#asking-which-fixes-to-apply)).
+> is a one-file fix.
 
 The frame body is the App Router `PatternFrame` above, saved as `FrameBody.tsx` with the same
 `widths.ts`. The decorator only reads the pattern's type and keys the frame by it:
