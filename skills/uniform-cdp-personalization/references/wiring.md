@@ -13,10 +13,9 @@ never.
 
 ## Identity
 
-Look up by user ID when the visitor is logged in, otherwise by the CDP's anonymous ID cookie. A
-first-time visitor has no CDP cookie on the first request, because the CDP's browser library sets
-it after the page loads: skip the lookup and render the default variant. A B2B reveal API
-identifies the account from the visitor's IP; read it from the request on the server.
+Look up by the identity chosen in the [questions](audit.md#questions). A first-time visitor has no
+CDP cookie on the first request, because the CDP's browser library sets it after the page loads:
+skip the lookup and render the default variant.
 
 ## App Router
 
@@ -67,8 +66,8 @@ out `httpOnly` so the browser can read the quirks.
 
 ## Failures
 
-A 404 means no profile: map it as one (`traitsToQuirks(null)`) and cache it. On a timeout, a 429 or a 5xx, keep
-the cached quirks or none, cache nothing, and do not throw.
+A 404 means no profile: map it as one (`traitsToQuirks(null)`) and cache it. On a timeout, a 429
+or a 5xx, keep the cached quirks or none, cache nothing, and do not throw.
 
 ## Consent
 

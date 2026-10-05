@@ -9,13 +9,13 @@ GET https://profiles.segment.com/v1/spaces/<space_id>/collections/users/profiles
 EU workspaces use `profiles.euw1.segment.com`. The access token (Unify settings → API access) is
 the Basic auth username, with a blank password: `Authorization: Basic base64("<token>:")`. Call
 it from the server only. The API has no CORS, and the token reads every profile in the space. The
-limit is 100 requests per second per space; above it Segment answers 429.
+default limit is 100 requests per second per space; above it Segment answers 429.
 
 ## Requesting traits
 
 `/traits` returns 10 traits unless asked for more, so a trait the mapping needs can be silently
-missing. Pass `include=<key>,<key>` with exactly the keys the mapping reads (or `limit`, up to
-200). A response looks like this:
+missing. Pass `include=<key>,<key>` with exactly the keys the mapping reads. A response looks like
+this:
 
 ```json
 { "traits": { "frequent_buyers": true, "orders_last_90_days": 4 },
@@ -28,8 +28,8 @@ An unknown profile is a 404 with
 ## Identity
 
 The identifier is `anonymous_id:<id>` or `user_id:<id>`, URL-encoded (`+` becomes `%2B`).
-analytics.js stores its cookies JSON-encoded, so `ajs_anonymous_id` can arrive as `"<uuid>"`,
-quotes included; strip them when present.
+An `ajs_anonymous_id` cookie written by Analytics.js Classic is JSON-encoded and arrives as
+`"<uuid>"`, quotes included; strip them when present.
 
 [Uniform's Segment guide](https://docs.uniform.app/docs/integrations/data/segment) uses the raw
 cookie value, requests no `include`, and spreads the raw traits into quirks; the mapping in this

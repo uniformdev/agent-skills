@@ -91,10 +91,16 @@ test('the profile lookup is cached per visitor', () => {
   if (!quirksInMiddleware()) return; // measured only when the lookup runs in middleware
   const code = middlewareCode();
   // A cookie written with an expiry whose value is the serialized quirks, not a plain ID such as
-  // the demo profile override.
+  // the demo profile override. The value and the options are often variables
+  // (`cookies.set({ name, value: payload, maxAge })`), so identifiers in the call are expanded to
+  // what they were assigned.
+  const assigned = new Map(
+    [...code.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*([^;]{0,400})/g)].map((m) => [m[1], m[2]])
+  );
+  const expand = (s: string) => s + [...s.matchAll(/\b\w+\b/g)].map((m) => assigned.get(m[0]) ?? '').join('\n');
   const writes = [
-    ...[...code.matchAll(/cookies\.set\(((?:[^()]|\([^()]*\))*)\)/g)].map((m) => m[1]),
-    ...[...code.matchAll(/Set-Cookie[^\n]{0,300}/gi)].map((m) => m[0]),
+    ...[...code.matchAll(/cookies\.set\(((?:[^()]|\([^()]*\))*)\)/g)].map((m) => expand(m[1])),
+    ...[...code.matchAll(/Set-Cookie[^\n]{0,300}/gi)].map((m) => expand(m[0])),
   ];
   const cached = writes.some(
     (w) => /\b(maxAge|expires|Max-Age|Expires)\b/i.test(w) && /JSON\.stringify|quirk|serialize|encode/i.test(w)
@@ -120,14 +126,19 @@ test('the numeric trait is bucketed into quirk values', () => {
   const mapping = codeFiles()
     .filter(({ content }) => /lifetime_value/.test(content))
     .map(({ f, content }) => ({ f, content: content.replace(/(["']?lifetime_value["']?\s*:\s*)-?[\d_.]+/g, '$1VALUE') }));
-  // A read of the value: `traits.lifetime_value` or `traits["lifetime_value"]`.
+  // A read of the value: `traits.lifetime_value` or `traits["lifetime_value"]`, or a variable
+  // assigned from one. Log lines are dropped so a logged value is not read as the quirk.
   const ACCESS = String.raw`[\w.?]*(?:\.lifetime_value|\[\s*['"]lifetime_value['"]\s*\])`;
-  const raw = mapping.filter(({ content }) =>
-    new RegExp(String.raw`String\(\s*${ACCESS}\s*\)|\$\{\s*${ACCESS}\s*\}|${ACCESS}\??\.toString\(`).test(content)
-  );
+  const raw = mapping.filter(({ content }) => {
+    const code = content.replace(/^.*\bconsole\.\w+\(.*$/gm, '');
+    const aliases = [...code.matchAll(new RegExp(String.raw`(?:const|let|var)\s+(\w+)\s*=\s*${ACCESS}`, 'g'))].map((m) => m[1]);
+    const reads = [ACCESS, ...aliases.map((a) => String.raw`\b${a}\b`)].join('|');
+    return new RegExp(String.raw`String\(\s*(?:${reads})\s*\)|\$\{\s*(?:${reads})\s*\}|(?:${reads})\??\.toString\(`).test(code);
+  });
   expect(raw.map(({ f }) => f), 'lifetime_value is written as a raw number; quirk criteria compare exact strings and cannot test ranges').toEqual([]);
   // A threshold near the trait: a comparison with a number, a list of numbers, or a named bound.
-  const THRESHOLD = String.raw`[<>]=?\s*(?:-?\d|[A-Z][A-Z0-9_]{2,}\b)|\[\s*\d+\s*,\s*\d+|\b\w*(?:min|max|threshold|above|below|gte|lte|tier|bucket)\w*\s*:\s*\d`;
+  // Arrows (`=> 0`), status and length checks, and cookie lifetimes are not thresholds.
+  const THRESHOLD = String.raw`(?<!=)(?<!\b(?:status|length|size)\s*)[<>]=?\s*(?:-?\d|[A-Z][A-Z0-9_]{2,}\b)|\[\s*\d+\s*,\s*\d+|\b(?!maxAge\b)\w*(?:min|max|threshold|above|below|gte|lte|tier|bucket)\w*\s*:\s*\d`;
   const near = new RegExp(String.raw`lifetime_value[\s\S]{0,600}?(?:${THRESHOLD})|(?:${THRESHOLD})[\s\S]{0,600}?lifetime_value`);
   const bucketed = mapping.some(({ content }) => near.test(content));
   expect(bucketed, 'map lifetime_value onto a small set of bucket values (thresholds in code) that a quirk definition lists as options').toBe(true);

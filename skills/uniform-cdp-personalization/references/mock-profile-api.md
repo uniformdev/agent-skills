@@ -32,8 +32,8 @@ Every demo UI works the same way: choosing a profile sets an override identity c
 reloads the page. The lookup honours the override only while the flag is on, otherwise any visitor
 could read any profile.
 
-"New visitor" clears the override. `context.forget(true)` would also clear the visitor's scores,
-test assignments and every other quirk; use it only when that is the intent.
+"New visitor" clears the override. `context.forget()` would also clear the visitor's scores, test
+assignments, consent and every other quirk; use it only when that is the intent.
 
 ## Demo UI
 
@@ -46,4 +46,4 @@ The variants offered in the [demo UI question](audit.md#questions):
 | Canvas component that authors place on a page | Demos whose copy authors edit | A component definition, staged and handed to the user like the quirks |
 | Link only: `?demoProfile=<id>` sets the override | Scripted demos and screenshots | Nothing to render |
 
-The UI chooses a profile, never quirk values, for the same reason the mock returns raw traits.
+The UI chooses a profile, never quirk values.

@@ -42,8 +42,8 @@ are documented in [uniform-nextjs-app-router](../uniform-nextjs-app-router/SKILL
 
 - No public Uniform package connects Segment or any other CDP; there is no
   `@uniformdev/context-segment`.
-- No Segment setup in Uniform: [Uniform's Segment guide](https://docs.uniform.app/docs/integrations/data/segment)
-  wires it in code, so a quirk matches a trait only because code writes it.
+- No Segment integration to install in Uniform: a quirk matches a trait only because code writes
+  it ([segment.md](references/segment.md#identity)).
 - No `quirks` option on `new Context()`; quirks enter through `update()` or the server state.
 
 ## Resources

@@ -7,9 +7,9 @@
 | Personalization criterion | `=` or `!=`, exact and case-sensitive. A missing quirk compares as `""`, so `!=` also matches visitors with no CDP data |
 | Signal criterion on a quirk | String match, case-insensitive unless set otherwise: exact, contains, regex, each negatable, plus exists / does not exist |
 
-Quirk values are strings (`type Quirks = { [key: string]: string }`), and `update({ quirks })`
-stores what it is given without converting it. A boolean `true` written as-is never equals the
-`"true"` a criterion compares against.
+Quirk values are strings, and `update({ quirks })` stores what it is given without converting it.
+Traits typed `any` still compile, and a stored `true` never equals the `"true"` a personalization
+criterion compares against.
 
 ## Trait types
 
@@ -23,9 +23,9 @@ stores what it is given without converting it. A boolean `true` written as-is ne
 
 ## One mapping function
 
-Call the same function from the production lookup and from the mock. If they map separately, the
-demo shows values production never writes. The rules below are an example: replace them with the
-rows of the confirmed [mapping plan](audit.md#the-report).
+Map every trait in one function; the mock reaches it through the production client
+([mock-profile-api.md](mock-profile-api.md#contract-first)). The rules below are an example:
+replace them with the rows of the confirmed [mapping plan](audit.md#the-report).
 
 ```ts
 type Rule = { trait: string; quirk: string; value: (raw: unknown) => string };
@@ -56,8 +56,8 @@ a quirk `top-interest` set to `hiking` reads back as quirk `top` with value `int
 
 ## Clearing stale values
 
-Nothing deletes a quirk: `update({ quirks })` merges keys. Write every quirk the mapping owns on
-every lookup, and no other quirk, or a visitor who left an audience keeps matching it.
+`update({ quirks })` merges keys and never removes one. Write every quirk the mapping owns on every
+lookup, and no other quirk, or a visitor who left an audience keeps matching it.
 
 ## Definitions
 
@@ -78,17 +78,18 @@ options:
     value: none
 ```
 
-Stage the files in their own directory, `uniform-cdp/quirks/<id>.yaml`, not in the
-[sync directory](audit.md#uniform-project): there a mirror pull deletes them before they are
+Stage the files in a directory of their own (for example `uniform-cdp/quirks/<id>.yaml`), not in
+the [sync directory](audit.md#uniform-project): there a mirror pull deletes them before they are
 pushed, and a sync push sends them along with everything else.
 
 ## Getting them into Uniform
 
 Hand the user the commands unless they chose to create the definitions now
 ([audit.md](audit.md#questions)): creating them changes the live project before the user has
-reviewed the names and options. Either way, push with `--mode createOrUpdate`, because
-`quirk push` defaults to mirror, which deletes every quirk that is not in the directory. Scripts
-make the hand-over repeatable:
+reviewed the names and options. Either way, push with `--mode createOrUpdate`: the directory holds
+only the CDP quirks, and the default mirror mode
+([push modes](../../uniform-sdk/references/cli-reference.md#common-flags)) would delete every other
+quirk the project defines. Scripts make the hand-over repeatable:
 
 ```json
 "uniform:cdp:whatif": "uniform context quirk push ./uniform-cdp/quirks --mode createOrUpdate --what-if",

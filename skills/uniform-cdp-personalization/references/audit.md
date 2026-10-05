@@ -20,7 +20,8 @@ grep -rnE 'collections/users/profiles|ajs_(anonymous|user)_id|analytics\.(identi
 grep -rnE 'defaultConsent|storeConsent' --include='*.[jt]s' --include='*.[jt]sx' --include='*.mjs' --exclude-dir=node_modules --exclude-dir=.next .
 ```
 
-With none of these Next.js packages installed, wire by the "Any other setup" row in
+With neither Next.js SDK installed (`next-app-router`, or `canvas-next` with `context-next`), wire by
+the "Any other setup" row in
 [wiring.md](wiring.md#where-quirks-have-to-be-set).
 
 Look for demo UI the project already has, to extend rather than duplicate: a component that
@@ -50,7 +51,7 @@ defaults marked. Ask only what has more than one valid answer:
 |---|---|---|
 | Where to look up profiles (App Router) | Middleware (Recommended) | Middleware personalizes the first HTML and costs one lookup per visitor per cache period. The browser costs nothing on the server, but the page switches variant after it loads |
 | What to build (multi-select) | Lookup and mapping, staged quirk definitions, and the mock when there are no CDP credentials. Creating the definitions in Uniform now is an option, off by default ([mapping.md](mapping.md#getting-them-into-uniform)) | — |
-| Demo UI | None recommended: list the four variants and their costs in [mock-profile-api.md](mock-profile-api.md#demo-ui) | — |
+| Demo UI | No default: list the four variants and their costs in [mock-profile-api.md](mock-profile-api.md#demo-ui) | — |
 | Identity (only when the site has logins) | User ID when logged in, otherwise the CDP's anonymous ID | Email puts personal data in URLs and logs |
 
 Ask about consent only when the project has no consent handling. Bucket thresholds and the cache
