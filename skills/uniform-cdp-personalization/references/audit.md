@@ -1,0 +1,91 @@
+# Auditing a project and asking the user
+
+## Scope
+
+Read only. Collect all of this before changing anything.
+
+### Code
+
+```bash
+# SDK in use
+grep -oE '"@uniformdev/(next-app-router|canvas-next|context-next|context-react|context)"' package.json
+# Where quirks are written or wiped today
+grep -rnE '\bquirks\b|useQuirks|forget\(' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=.next .
+# Middleware or proxy, and the options it passes
+find . -maxdepth 2 \( -name 'middleware.*' -o -name 'proxy.*' \) -not -path './node_modules/*'
+# CDP calls and identity cookies already in the code
+grep -rnE 'collections/users/profiles|ajs_(anonymous|user)_id|analytics\.(identify|page|track)' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=.next .
+# Consent
+grep -rnE 'defaultConsent|storeConsent' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=.next .
+```
+
+Look for demo UI the project already has, to extend rather than duplicate: a component that
+writes quirks or calls `forget`, a persona or profile switcher in the component resolver or
+`uniform-data/component/`, a profile page.
+
+### Uniform project
+
+List existing quirks with `npx uniform context quirk list`, or read `uniform-data/quirk/` when the
+project syncs them. Signals with `QK` criteria read quirks too (`uniform context signal list`,
+`uniform-data/signal/`). Reuse a quirk that already means the same thing: a second one splits
+authors' rules between two IDs.
+
+### CDP
+
+Ask what the code cannot show: which traits and audiences marketing wants to target and the values
+each can take, and how a profile is fetched (endpoint or SDK call, identifier, auth, region).
+Segment: [segment.md](segment.md).
+
+## Questions
+
+Ask in one call: a structured question tool when there is one, otherwise a numbered list with the
+defaults marked. Ask only what has more than one valid answer:
+
+| Question | Default | Trade-off |
+|---|---|---|
+| Where to look up profiles (App Router) | Middleware (Recommended) | Middleware personalizes the first HTML and costs one lookup per visitor per cache period. The browser costs nothing on the server, but the page switches variant after it loads |
+| What to build (multi-select) | Lookup and mapping, staged quirk definitions, and the mock when there are no CDP credentials. Creating the definitions in Uniform now is an option, off by default ([mapping.md](mapping.md#getting-them-into-uniform)) | — |
+| Demo UI | None recommended: list the four variants and their costs in [mock-profile-api.md](mock-profile-api.md#demo-ui) | — |
+| Identity (only when the site has logins) | User ID when logged in, otherwise the CDP's anonymous ID | Email puts personal data in URLs and logs |
+
+Ask about consent only when the project has no consent handling. Bucket thresholds and the cache
+period go in the mapping plan below, where the user confirms them with everything else.
+
+## When not to ask
+
+| The user said | Do |
+|---|---|
+| Don't ask, apply everything | Take the defaults: stage the definitions without creating them, and build the profile switching every demo UI shares with no UI on top. List the demo UI choice as open, and every default as assumed, in the closing report |
+| Audit or review only | Write the report and stop |
+| One named piece ("add a mock") | Scope everything to it |
+
+## The report
+
+```markdown
+# CDP personalization audit
+
+<SDK> · <CDP> · identity: <source> · quirks set today: <where, or nowhere>
+
+## Works
+## Broken
+- `<file>:<line>` — <what visitors or authors get>. Fix: <one sentence>.
+## Missing
+
+## Mapping plan
+| CDP key | Quirk ID | Values | Definition |
+|---|---|---|---|
+| `<trait>` | `<camelCaseId>` | `<v1>`, `<v2>` (thresholds, marked assumed) | new / existing |
+
+Cache period: <minutes> (assumed)
+```
+
+Unless the user said not to ask, have them confirm or edit the mapping plan before building.
+
+## The closing report
+
+- Files changed, and files staged for Uniform.
+- Commands for the user to run, in order ([mapping.md](mapping.md#getting-them-into-uniform)).
+- Environment variables to set where the site is deployed.
+- What to check in the CDP ([segment.md](segment.md#audiences-and-computed-traits) for Segment).
+- Notes for authors: the values each quirk takes, and how `!=` treats visitors without CDP data.
+- Every default that was assumed rather than chosen.

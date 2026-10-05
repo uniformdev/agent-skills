@@ -25,6 +25,7 @@ export const GENERIC_EVALS = [
   'nextjs-app-router-add-component',
   'nextjs-app-router-setup',
   'nextjs-breadcrumbs',
+  'nextjs-cdp-personalization',
   'nextjs-editor-experience',
   'nextjs-navigation-mega-menu',
   'nextjs-page-router-breadcrumbs',
