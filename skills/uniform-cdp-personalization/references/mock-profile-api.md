@@ -37,7 +37,7 @@ test assignments and every other quirk; use it only when that is the intent.
 
 ## Demo UI
 
-Ask which variant to build, with no recommended default:
+The variants offered in the [demo UI question](audit.md#questions):
 
 | Variant | Fits | Costs |
 |---|---|---|

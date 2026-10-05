@@ -7,28 +7,33 @@ Read only. Collect all of this before changing anything.
 ### Code
 
 ```bash
-# SDK in use
-grep -oE '"@uniformdev/(next-app-router|canvas-next|context-next|context-react|context)"' package.json
+# SDK in use, in every package.json (monorepos have several)
+grep -rnoE '"@uniformdev/(next-app-router|canvas-next|context-next|context-react|context)"' --include=package.json --exclude-dir=node_modules .
 # Where quirks are written or wiped today
-grep -rnE '\bquirks\b|useQuirks|forget\(' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=.next .
+grep -rnE '\bquirks\b|useQuirks|forget\(' --include='*.[jt]s' --include='*.[jt]sx' --include='*.mjs' --exclude-dir=node_modules --exclude-dir=.next .
 # Middleware or proxy, and the options it passes
-find . -maxdepth 2 \( -name 'middleware.*' -o -name 'proxy.*' \) -not -path './node_modules/*'
-# CDP calls and identity cookies already in the code
-grep -rnE 'collections/users/profiles|ajs_(anonymous|user)_id|analytics\.(identify|page|track)' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=.next .
+find . \( -name node_modules -o -name .next \) -prune -o \( -name 'middleware.*' -o -name 'proxy.*' \) -print
+# CDP calls and identity cookies already in the code: grep for the CDP's own SDK package,
+# profile endpoint and cookie names. Segment:
+grep -rnE 'collections/users/profiles|ajs_(anonymous|user)_id|analytics\.(identify|page|track)' --include='*.[jt]s' --include='*.[jt]sx' --include='*.mjs' --exclude-dir=node_modules --exclude-dir=.next .
 # Consent
-grep -rnE 'defaultConsent|storeConsent' --include='*.ts' --include='*.tsx' --exclude-dir=node_modules --exclude-dir=.next .
+grep -rnE 'defaultConsent|storeConsent' --include='*.[jt]s' --include='*.[jt]sx' --include='*.mjs' --exclude-dir=node_modules --exclude-dir=.next .
 ```
 
+With none of these Next.js packages installed, wire by the "Any other setup" row in
+[wiring.md](wiring.md#where-quirks-have-to-be-set).
+
 Look for demo UI the project already has, to extend rather than duplicate: a component that
-writes quirks or calls `forget`, a persona or profile switcher in the component resolver or
-`uniform-data/component/`, a profile page.
+writes quirks or calls `forget`, a persona or profile switcher in the component resolver or the
+project's component definitions, a profile page.
 
 ### Uniform project
 
-List existing quirks with `npx uniform context quirk list`, or read `uniform-data/quirk/` when the
-project syncs them. Signals with `QK` criteria read quirks too (`uniform context signal list`,
-`uniform-data/signal/`). Reuse a quirk that already means the same thing: a second one splits
-authors' rules between two IDs.
+The sync directory is the one `uniform.config.ts` serializes to (`uniform-data/` by default); a
+project without a sync config has none. List existing quirks with `npx uniform context quirk list`,
+or read the sync directory's `quirk/` when the project syncs them. Signals with `QK` criteria read
+quirks too (`npx uniform context signal list`, or `signal/`). Reuse a quirk that already means the
+same thing: a second one splits authors' rules between two IDs.
 
 ### CDP
 
@@ -56,6 +61,7 @@ period go in the mapping plan below, where the user confirms them with everythin
 | The user said | Do |
 |---|---|
 | Don't ask, apply everything | Take the defaults: stage the definitions without creating them, and build the profile switching every demo UI shares with no UI on top. List the demo UI choice as open, and every default as assumed, in the closing report |
+| Don't ask, but named no traits or audiences | Invent none. Build the lookup, the cache and the mock with an empty rule set, stage no definitions, and give the mock only the empty and unknown profiles. List the traits to target as open in the closing report |
 | Audit or review only | Write the report and stop |
 | One named piece ("add a mock") | Scope everything to it |
 

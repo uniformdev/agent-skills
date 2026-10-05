@@ -24,7 +24,8 @@ stores what it is given without converting it. A boolean `true` written as-is ne
 ## One mapping function
 
 Call the same function from the production lookup and from the mock. If they map separately, the
-demo shows values production never writes.
+demo shows values production never writes. The rules below are an example: replace them with the
+rows of the confirmed [mapping plan](audit.md#the-report).
 
 ```ts
 type Rule = { trait: string; quirk: string; value: (raw: unknown) => string };
@@ -62,7 +63,7 @@ every lookup, and no other quirk, or a visitor who left an audience keeps matchi
 
 Write one definition per quirk, with `options` holding exactly the values the mapping writes; a
 value an author targets that the mapping never writes matches nobody. Put the thresholds in the
-description:
+description, as in this definition for the example `orderFrequency`:
 
 ```yaml
 id: orderFrequency
@@ -77,22 +78,23 @@ options:
     value: none
 ```
 
-Stage the files in their own directory, `uniform-cdp/quirks/<id>.yaml`. In `uniform-data/`, a
-mirror pull deletes them before they are pushed, and a sync push sends them along with everything
-else.
+Stage the files in their own directory, `uniform-cdp/quirks/<id>.yaml`, not in the
+[sync directory](audit.md#uniform-project): there a mirror pull deletes them before they are
+pushed, and a sync push sends them along with everything else.
 
 ## Getting them into Uniform
 
-Ask whether to create the definitions now or hand the user the commands, and recommend handing
-them over: creating them changes the live project before the user has reviewed the names and
-options. Either way, push with `--mode createOrUpdate`, because `quirk push` defaults to mirror,
-which deletes every quirk that is not in the directory. Scripts make the hand-over repeatable:
+Hand the user the commands unless they chose to create the definitions now
+([audit.md](audit.md#questions)): creating them changes the live project before the user has
+reviewed the names and options. Either way, push with `--mode createOrUpdate`, because
+`quirk push` defaults to mirror, which deletes every quirk that is not in the directory. Scripts
+make the hand-over repeatable:
 
 ```json
 "uniform:cdp:whatif": "uniform context quirk push ./uniform-cdp/quirks --mode createOrUpdate --what-if",
 "uniform:cdp:push": "uniform context quirk push ./uniform-cdp/quirks --mode createOrUpdate"
 ```
 
-If the project syncs quirks to `uniform-data/quirk/`, run `uniform:pull` after the push, or the
-next mirror sync push deletes the new quirks. The Context manifest carries signals but not quirk
-definitions, so quirks alone need no `uniform context manifest publish`.
+If the project syncs quirks, run `uniform sync pull` (or the project's pull script) after the
+push, or the next mirror sync push deletes the new quirks. The Context manifest carries signals
+but not quirk definitions, so quirks alone need no `uniform context manifest publish`.
