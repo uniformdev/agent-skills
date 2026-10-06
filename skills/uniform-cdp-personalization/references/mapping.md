@@ -17,7 +17,6 @@ criterion compares against.
 |---|---|
 | Audience (boolean) | `"true"` when the trait is `true`, otherwise `"false"`. A visitor who never joined may have no trait at all ([Segment](segment.md#audiences-and-computed-traits)), and `= false` should still match them |
 | Enum | The value normalised to the definition's options; anything else `""` |
-| Number | A bucket from a small option set, with thresholds the user confirms |
 | List | One boolean quirk per value marketing targets. To keep the list in one quirk instead, the user creates a signal with a contains criterion in Uniform |
 | Object, identifier, personal data | Not mapped: quirks are kept in browser storage and cookies |
 

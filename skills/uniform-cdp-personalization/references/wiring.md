@@ -21,8 +21,6 @@ skip the lookup and render the default variant.
 
 - **Middleware**: pass the quirks per request with `handleUniformRoute({ request, quirks })`
   ([routing.md](../../uniform-nextjs-app-router/references/routing.md#setting-quirks-in-middleware)).
-  `uniformMiddleware(options)` is built when the module loads, so its options are the same for
-  every visitor.
 - **Browser context**: write the same mapped quirks with `context.update({ quirks })`
   ([personalization.md](../../uniform-nextjs-app-router/references/personalization.md#useuniformcontext-hook)).
   Middleware hands its quirks to the browser only through the `ufqc` cookie, which it sets only
@@ -35,6 +33,18 @@ export default async function middleware(request: NextRequest) {
   const response = await handleUniformRoute({ request, quirks: cdp.quirks });
   if (cdp.lookedUp) setCdpCookie(response, cdp); // identity key, mapped quirks, expiry
   return response;
+}
+```
+
+```tsx
+"use client"; // rendered once in the root layout; useUniformContext works outside UniformComposition
+export function CdpQuirks() {
+  const { context } = useUniformContext();
+  useEffect(() => {
+    const cdp = readCdpCookie(); // the cache cookie the middleware set
+    if (context && cdp) context.update({ quirks: cdp.quirks });
+  }, [context]);
+  return null;
 }
 ```
 

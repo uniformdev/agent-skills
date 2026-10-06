@@ -29,8 +29,8 @@ are documented in [uniform-nextjs-app-router](../uniform-nextjs-app-router/SKILL
    [audit.md](references/audit.md#the-report).
 4. **Map** traits to string quirk values in one function that the lookup and the mock share →
    [mapping.md](references/mapping.md).
-5. **Wire** the lookup where the SDK evaluates personalization, cached per visitor →
-   [wiring.md](references/wiring.md).
+5. **Wire** the lookup where the SDK evaluates personalization, cached per visitor; on the App
+   Router that is the middleware and the browser context → [wiring.md](references/wiring.md).
 6. **Mock** the profile API and profile switching, when chosen →
    [mock-profile-api.md](references/mock-profile-api.md).
 7. **Define** one quirk per mapped trait, then create the definitions or hand the user the

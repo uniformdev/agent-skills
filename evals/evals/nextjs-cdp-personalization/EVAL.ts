@@ -80,15 +80,13 @@ const quirksInMiddleware = () => {
   );
 };
 
-test('CDP quirks are passed to the middleware on every request', () => {
+// Passing the quirks in middleware is a precondition, not a test of its own: the baseline does it
+// unaided.
+test('the profile lookup runs in middleware and is cached per visitor', () => {
   expect(
     quirksInMiddleware(),
-    'the App Router picks the first-render variant in middleware: pass the CDP quirks per request with handleUniformRoute({ request, quirks }). Quirks written only in the browser change the page after it loads, and uniformMiddleware(options) is built once per module'
+    'the App Router picks the first-render variant in middleware: pass the CDP quirks per request with handleUniformRoute({ request, quirks })'
   ).toBe(true);
-});
-
-test('the profile lookup is cached per visitor', () => {
-  if (!quirksInMiddleware()) return; // measured only when the lookup runs in middleware
   const code = middlewareCode();
   // A cookie written with an expiry whose value is the serialized quirks, not a plain ID such as
   // the demo profile override. The value and the options are often variables
@@ -119,29 +117,6 @@ test('the Profile API request names the traits the mapping reads', () => {
     /[?&](include|limit)=|searchParams\.(set|append)\(\s*['"](include|limit)['"]|\b(include|limit)\s*:/.test(code),
     'Segment /traits returns 10 traits by default: pass include=<the keys the mapping reads> (or limit), or a mapped trait can be silently missing'
   ).toBe(true);
-});
-
-test('the numeric trait is bucketed into quirk values', () => {
-  // Fixture literals (`lifetime_value: 2500`) are blanked so they never count as thresholds.
-  const mapping = codeFiles()
-    .filter(({ content }) => /lifetime_value/.test(content))
-    .map(({ f, content }) => ({ f, content: content.replace(/(["']?lifetime_value["']?\s*:\s*)-?[\d_.]+/g, '$1VALUE') }));
-  // A read of the value: `traits.lifetime_value` or `traits["lifetime_value"]`, or a variable
-  // assigned from one. Log lines are dropped so a logged value is not read as the quirk.
-  const ACCESS = String.raw`[\w.?]*(?:\.lifetime_value|\[\s*['"]lifetime_value['"]\s*\])`;
-  const raw = mapping.filter(({ content }) => {
-    const code = content.replace(/^.*\bconsole\.\w+\(.*$/gm, '');
-    const aliases = [...code.matchAll(new RegExp(String.raw`(?:const|let|var)\s+(\w+)\s*=\s*${ACCESS}`, 'g'))].map((m) => m[1]);
-    const reads = [ACCESS, ...aliases.map((a) => String.raw`\b${a}\b`)].join('|');
-    return new RegExp(String.raw`String\(\s*(?:${reads})\s*\)|\$\{\s*(?:${reads})\s*\}|(?:${reads})\??\.toString\(`).test(code);
-  });
-  expect(raw.map(({ f }) => f), 'lifetime_value is written as a raw number; quirk criteria compare exact strings and cannot test ranges').toEqual([]);
-  // A threshold near the trait: a comparison with a number, a list of numbers, or a named bound.
-  // Arrows (`=> 0`), status and length checks, and cookie lifetimes are not thresholds.
-  const THRESHOLD = String.raw`(?<!=)(?<!\b(?:status|length|size)\s*)[<>]=?\s*(?:-?\d|[A-Z][A-Z0-9_]{2,}\b)|\[\s*\d+\s*,\s*\d+|\b(?!maxAge\b)\w*(?:min|max|threshold|above|below|gte|lte|tier|bucket)\w*\s*:\s*\d`;
-  const near = new RegExp(String.raw`lifetime_value[\s\S]{0,600}?(?:${THRESHOLD})|(?:${THRESHOLD})[\s\S]{0,600}?lifetime_value`);
-  const bucketed = mapping.some(({ content }) => near.test(content));
-  expect(bucketed, 'map lifetime_value onto a small set of bucket values (thresholds in code) that a quirk definition lists as options').toBe(true);
 });
 
 const ORIGINAL_UNIFORM_DATA = [
@@ -233,7 +208,8 @@ test('fixture profiles hold raw Segment traits, not quirk values', () => {
     .filter((f) => /\.(json|ts|tsx|js|mjs)$/.test(f) && f !== 'package.json')
     .filter((f) => /mock|fixture|demo|persona|profile/i.test(f))
     .map((f) => stripComments(read(f)))
-    .filter((c) => /favorite_category|favoriteCategory/.test(c) && /golf|tennis|running/.test(c));
+    // Any key naming: fixtures of quirk values often use the agent's own quirk IDs.
+    .filter((c) => /["'](golf|tennis|running)["']/.test(c));
   if (!fixtures.length) return; // no fixture profiles
   expect(
     fixtures.some(
