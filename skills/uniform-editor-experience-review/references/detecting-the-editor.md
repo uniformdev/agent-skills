@@ -82,24 +82,14 @@ The hook's `global` option changes what `selectedComponentReference` means; see
 
 ## Confirm against the installed version
 
-Check these shapes in the project before relying on them:
+Before relying on these shapes, read them in the type declarations the project has installed:
 
-```bash
-# Locate the packages (works with npm, pnpm and yarn layouts)
-find node_modules -path '*@uniformdev/next-app-router-shared/dist/index.d.ts' -not -path '*/.cache/*' | head -1
-find node_modules -path '*@uniformdev/canvas-react/dist/index.d.ts' -not -path '*/.cache/*' | head -1
-find node_modules -path '*@uniformdev/canvas/dist/index.d.ts' -not -path '*/.cache/*' | head -1
+- `@uniformdev/next-app-router-shared`: `CompositionContext` (the `context` prop) and the
+  `previewMode` field on `PageState`. It is a dependency of `@uniformdev/next-app-router`, so it may
+  not sit at the top level of `node_modules`.
+- `@uniformdev/canvas-react`: the return type of `useUniformContextualEditingState`
+  (`UseUniformContextualEditingStateReturnType`), with its JSDoc.
+- `@uniformdev/canvas`: `isComponentPlaceholderId`, `walkNodeTree`, `createCanvasChannel` and
+  `isUpdateContextualEditingStateInternalMessage`.
 
-# App Router: the context every component receives, and the previewMode field
-awk '/^type CompositionContext = /,/^};/' <next-app-router-shared>/dist/index.d.ts
-awk '/^type PageState = /,/^};/' <next-app-router-shared>/dist/index.d.ts | grep -B5 'previewMode'
-
-# Page Router: the editing-state hook's return type, with JSDoc
-awk '/^type UseUniformContextualEditingStateReturnType/,/^};/' <canvas-react>/dist/index.d.ts
-
-# Both: placeholder predicate, tree walker and the channel primitives
-grep -n 'declare const isComponentPlaceholderId\|declare function walkNodeTree\|declare const createCanvasChannel\|declare const isUpdateContextualEditingStateInternalMessage' <canvas>/dist/index.d.ts
-```
-
-Use a range match (`awk '/start/,/end/'`), not `grep -A N`. A fixed line count silently cuts a
-long type short.
+Read each type in full. Long types are easy to cut short.
