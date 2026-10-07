@@ -11,6 +11,14 @@ the Basic auth username, with a blank password: `Authorization: Basic base64("<t
 it from the server only. The API has no CORS, and the token reads every profile in the space. The
 default limit is 100 requests per second per space; above it Segment answers 429.
 
+Unless the project already names them, read the space ID and the token from `SEGMENT_SPACE_ID` and
+`SEGMENT_API_KEY`, the names
+[Uniform's Segment guide](https://docs.uniform.app/docs/integrations/data/segment) uses, so a
+project that followed it works unchanged; make the host configurable for EU workspaces. Build the
+Basic header from the token in code, not from a second, pre-encoded variable. The token is the
+Profile API access token, not a source's write key; the guide keeps that one in
+`NEXT_PUBLIC_ANALYTICS_WRITE_KEY` for Analytics.js.
+
 ## Requesting traits
 
 `/traits` returns 10 traits unless asked for more, so a trait the mapping needs can be silently
@@ -29,7 +37,8 @@ An unknown profile is a 404 with
 
 The identifier is `anonymous_id:<id>` or `user_id:<id>`, URL-encoded (`+` becomes `%2B`).
 An `ajs_anonymous_id` cookie written by Analytics.js Classic is JSON-encoded and arrives as
-`"<uuid>"`, quotes included; strip them when present.
+`"<uuid>"`, quotes included; strip them when present. `ajs_user_id` can hold the string `null`:
+treat it as no user ID, or every visitor is looked up as `user_id:null`.
 
 [Uniform's Segment guide](https://docs.uniform.app/docs/integrations/data/segment) uses the raw
 cookie value, requests no `include`, and spreads the raw traits into quirks; the mapping in this

@@ -30,13 +30,17 @@ installed.
 4. **Map** traits to string quirk values in one function that the lookup and the mock share →
    [mapping.md](references/mapping.md).
 5. **Wire** the lookup where the SDK evaluates personalization, cached per visitor; on the App
-   Router that is the middleware and the browser context → [wiring.md](references/wiring.md).
+   Router that is the middleware and the browser context, and static Page Router pages hydrate with
+   an empty context first → [wiring.md](references/wiring.md).
 6. **Mock** the profile API and profile switching, when chosen →
    [mock-profile-api.md](references/mock-profile-api.md).
 7. **Define** one quirk per mapped trait, then create the definitions or hand the user the
    commands → [mapping.md](references/mapping.md#definitions).
 8. **Verify and close**: typecheck; with the mock on, switch through every fixture profile and
-   check the quirks applied; write the [closing report](references/audit.md#the-closing-report).
+   check the quirks applied; on static pages, reload with a profile that picks a non-default variant
+   and check that the console shows no hydration error
+   ([wiring.md](references/wiring.md#static-pages)); write the
+   [closing report](references/audit.md#the-closing-report).
 
 ## What does not exist
 
@@ -55,5 +59,5 @@ installed.
 - [Wiring](references/wiring.md) — where each SDK evaluates personalization, identity, caching,
   failures, consent
 - [Mock profile API](references/mock-profile-api.md) — contract, fixtures, the opt-in flag,
-  profile switching, demo UI variants
+  profile switching, demos against the real CDP, demo UI variants
 - [Segment](references/segment.md) — endpoint and auth, requesting traits, identity, audiences
