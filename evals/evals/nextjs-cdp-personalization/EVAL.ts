@@ -83,6 +83,33 @@ const middlewareCode = () => (MIDDLEWARE ? codeOf(closure(MIDDLEWARE)) : '');
 const assignments = (code: string) =>
   new Map([...code.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*([^;]{0,400})/g)].map((m) => [m[1], m[2]]));
 
+// The argument list of every call the pattern opens, up to its balanced closing parenthesis, so
+// nested calls in the options (`maxAge: Math.max(0, Math.floor((exp - Date.now()) / 1000))`) do
+// not hide the call.
+function callArgs(code: string, opener: RegExp) {
+  return [...code.matchAll(opener)].map((m) => {
+    const start = m.index! + m[0].length;
+    let depth = 1;
+    let i = start;
+    for (; i < code.length && depth; i++) depth += code[i] === '(' ? 1 : code[i] === ')' ? -1 : 0;
+    return code.slice(start, i - 1);
+  });
+}
+
+// Function declarations mapped to their bodies, so a value serialized inside a helper
+// (`cookies.set(NAME, encodeEntry(entry), …)`) is read through it.
+function functionBodies(code: string) {
+  const out = new Map<string, string>();
+  for (const m of code.matchAll(/function\s+(\w+)\s*\([^)]*\)[^{]*\{/g)) {
+    const start = m.index! + m[0].length;
+    let depth = 1;
+    let i = start;
+    for (; i < code.length && depth; i++) depth += code[i] === '{' ? 1 : code[i] === '}' ? -1 : 0;
+    out.set(m[1], code.slice(start, i - 1));
+  }
+  return out;
+}
+
 const quirksInMiddleware = () => {
   const code = middlewareCode();
   return (
@@ -93,11 +120,14 @@ const quirksInMiddleware = () => {
 
 // A cookie written with an expiry whose value is the serialized quirks, not a plain ID such as the
 // demo profile override, and read back under the same name before the lookup. Variables in the call
-// are expanded to what they were assigned for the serialization, not for the word "quirk", which
-// any identifier assigned from a getCdpQuirks() call would carry.
+// are expanded to what they were assigned, and the functions it calls to their bodies, for the
+// serialization only, not for the word "quirk", which any identifier assigned from a getCdpQuirks()
+// call would carry.
 function cacheCookie(code: string) {
   const assigned = assignments(code);
+  const bodies = functionBodies(code);
   const expand = (s: string) => s + [...s.matchAll(/\b\w+\b/g)].map((m) => assigned.get(m[0]) ?? '').join('\n');
+  const called = (s: string) => [...s.matchAll(/\b(\w+)\s*\(/g)].map((m) => bodies.get(m[1]) ?? '').join('\n');
   const literal = (s?: string) => s?.match(/^\s*['"`]([\w.-]+)['"`]/)?.[1];
   const resolve = (s: string) => literal(s) ?? literal(assigned.get(s.trim()));
   const nameOf = (args: string) => {
@@ -110,11 +140,14 @@ function cacheCookie(code: string) {
     return resolve(first) ?? resolve(second);
   };
   const writes = [
-    ...[...code.matchAll(/(?:cookies\.set|\bsetCookie|\bserialize)\(((?:[^()]|\([^()]*\))*)\)/g)].map((m) => m[1]),
+    ...callArgs(code, /(?:cookies\.set|\bsetCookie|\bserialize)\(/g),
     ...[...code.matchAll(/Set-Cookie['"`]?\s*,\s*([\s\S]{0,400}?)\)\s*;/gi)].map((m) => m[1]),
   ].filter((w) => {
     const e = expand(w);
-    return /\b(maxAge|expires|Max-Age|Expires)\b/i.test(e) && (/JSON\.stringify|\bserialize\w+\(/.test(e) || /quirk/i.test(w));
+    return (
+      /\b(maxAge|expires|Max-Age|Expires)\b/i.test(e) &&
+      (/JSON\.stringify|\bserialize\w+\(/.test(e + called(w)) || /quirk/i.test(w))
+    );
   });
   const names = writes.map(nameOf).filter((n): n is string => !!n);
   // Read: passed to any call that is not a write (`cookies.get(NAME)`, `readCookie(req, NAME)`),
