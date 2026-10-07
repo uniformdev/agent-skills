@@ -33,7 +33,8 @@ reloads the page. The lookup honours the override only while the flag is on, oth
 could read any profile.
 
 "New visitor" clears the override. `context.forget()` would also clear the visitor's scores, test
-assignments, consent and every other quirk; use it only when that is the intent.
+assignments and every other quirk, and reset consent to `defaultConsent`; use it only when that is
+the intent.
 
 ## Demo UI
 

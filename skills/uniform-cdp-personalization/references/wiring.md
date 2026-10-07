@@ -19,13 +19,12 @@ skip the lookup and render the default variant.
 
 ## App Router
 
-- **Middleware**: pass the quirks per request with `handleUniformRoute({ request, quirks })`
-  ([routing.md](../../uniform-nextjs-app-router/references/routing.md#setting-quirks-in-middleware)).
-- **Browser context**: write the same mapped quirks with `context.update({ quirks })`
-  ([personalization.md](../../uniform-nextjs-app-router/references/personalization.md#useuniformcontext-hook)).
-  Middleware hands its quirks to the browser only through the `ufqc` cookie, which it sets only
-  when the visitor has consented, and which the browser reads only on the first full page load.
-  The cache cookie below is readable on every load, including the first.
+- **Middleware**: pass the quirks per request with `handleUniformRoute({ request, quirks })`.
+- **Browser context**: write the same mapped quirks with `context.update({ quirks })`. Middleware
+  hands its quirks to the browser only through the `ufqc` cookie, which it sets only with consent,
+  and which the browser reads only on the first full page load; the `uniform-nextjs-app-router`
+  skill, if installed, has the details. The cache cookie below is readable on every load,
+  including the first.
 
 ```ts
 export default async function middleware(request: NextRequest) {
@@ -37,7 +36,7 @@ export default async function middleware(request: NextRequest) {
 ```
 
 ```tsx
-"use client"; // rendered once in the root layout; useUniformContext works outside UniformComposition
+"use client"; // rendered once in the root layout; reads the context UniformComposition creates
 export function CdpQuirks() {
   const { context } = useUniformContext();
   useEffect(() => {
@@ -53,17 +52,17 @@ quirks after the CDP library loads, and tell the user the page switches variant 
 
 ## Page Router
 
-- **On the server**: where the server context is created
-  ([personalization.md](../../uniform-nextjs-page-router/references/personalization.md#enabling-ssr-personalization-in-_documenttsx)),
-  await the lookup, then `await serverContext.update({ quirks })` before rendering. Server quirks
-  travel to the browser with the server state.
+- **On the server**: in `getInitialProps` of `pages/_document.tsx`, where the server context is
+  passed to `enableNextSsr`, await the lookup, then `await serverContext.update({ quirks })` before
+  `Document.getInitialProps(ctx)` renders. Server quirks travel to the browser with the server
+  state.
 - **In the browser only**: a server route that does the lookup, called after mount, then
   `context.update({ quirks })`. The server HTML shows the default variant until then.
 
-Quirks written in the browser stay in local storage unless `NextCookieTransitionDataStore` gets
-`experimental_quirksEnabled: true`. With it, and with consent, they are also written to the
-`ufvdqk` cookie, and server rendering reads them on the next request. The flag is tagged
-`@deprecated` to mark it experimental, not to announce its removal.
+Quirks written in the browser never reach the server unless `NextCookieTransitionDataStore` gets
+`experimental_quirksEnabled: true`; with it, and with consent, server rendering reads them from the
+`ufvdqk` cookie on the next request. The `uniform-nextjs-page-router` skill, if installed, has the
+details.
 
 ## Caching
 
@@ -81,7 +80,8 @@ or a 5xx, keep the cached quirks or none, cache nothing, and do not throw.
 
 ## Consent
 
-Unless `requireConsentForPersonalization` is set, Uniform personalizes without consent; consent
-decides whether quirks are stored in cookies. Follow the project's consent handling
-([routing.md](../../uniform-nextjs-app-router/references/routing.md#override-default-consent-per-request)).
-If the CDP lookup itself needs consent, skip it without consent.
+Uniform personalizes without consent; consent decides whether quirks are stored in cookies. The
+App Router middleware has no option to require consent; on the Page Router,
+`new Context({ requireConsentForPersonalization: true })` does. Follow the project's consent
+handling (on the App Router, `handleUniformRoute` takes `defaultConsent` per request). If the CDP
+lookup itself needs consent, skip it without consent.

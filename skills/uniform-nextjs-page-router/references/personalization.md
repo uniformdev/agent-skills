@@ -118,3 +118,18 @@ static async getInitialProps(
   return await Document.getInitialProps(ctx);
 }
 ```
+
+## Setting quirks on the server
+
+Quirks known on the server (from a header, a cookie or a lookup) go on the server context in the same `getInitialProps`. Await the update before `Document.getInitialProps(ctx)`, which renders the page:
+
+```tsx
+const serverTracker = createUniformContext(ctx);
+enableNextSsr(ctx, serverTracker);
+await serverTracker.update({ quirks: { memberTier: "gold" } });
+return await Document.getInitialProps(ctx);
+```
+
+The server context sends its quirks to the browser in the server state, so the browser context starts with them.
+
+Quirks written in the browser with `context.update({ quirks })` stay in the browser by default: in local storage with consent, in memory without it. With `experimental_quirksEnabled: true` on the `NextCookieTransitionDataStore` in `createUniformContext`, the browser also writes them, with consent, to the `ufvdqk` cookie, and server rendering reads that cookie on the next request. The option is tagged `@deprecated` to mark it experimental, not to announce its removal.

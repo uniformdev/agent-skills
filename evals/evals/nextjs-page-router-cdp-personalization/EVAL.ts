@@ -2,17 +2,19 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { dirname, join, normalize } from 'path';
 import { test, expect } from 'vitest';
 
-// Brownfield fixture for `uniform-cdp-personalization` on the App Router. The project renders
-// Uniform compositions and has no CDP code. The prompt asks for Segment-driven personalization on
-// three targets (a boolean audience, a numeric computed trait, an enum computed trait), demo
-// profiles without credentials, and no push. It names no Uniform API and says not to stop and
-// ask, so the skill's defaults apply.
+// Brownfield fixture for `uniform-cdp-personalization` on the Page Router, the twin of
+// nextjs-cdp-personalization with the same PROMPT.md. The project renders Uniform compositions with
+// SSR personalization (`enableNextSsr` in pages/_document.tsx) and has no CDP code. The prompt asks
+// for Segment-driven personalization on three targets (a boolean audience, a numeric computed
+// trait, an enum computed trait), demo profiles without credentials, and no push. It names no
+// Uniform API and says not to stop and ask, so the skill's defaults apply.
 //
-// One documented failure mode per test. Only the browser handover returns early (n/a), when the
-// lookup is not in middleware; the first test fails in that case. uniform-data/quirk/visitorType.yaml
-// is a negative control that the staged definitions must leave alone. The skill's rule that a quirk
-// push uses a non-mirror mode is not asserted: the prompt asks the agent to say what to run, so the
-// command usually lands in chat, which the sandbox does not capture.
+// One documented failure mode per test; none returns early. The App Router twin's browser handover
+// has no counterpart: server quirks reach the browser in the server state.
+// uniform-data/quirk/visitorType.yaml is a negative control that the staged definitions must leave
+// alone. The skill's rule that a quirk push uses a non-mirror mode is not asserted: the prompt asks
+// the agent to say what to run, so the command usually lands in chat, which the sandbox does not
+// capture.
 
 const read = (p: string) => readFileSync(p, 'utf-8');
 
@@ -41,8 +43,9 @@ const blankStrings = (s: string) =>
 const isCode = (f: string) => /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(f);
 const codeFiles = () => collect().filter(isCode).map((f) => ({ f, content: stripComments(read(f)) }));
 
-// The middleware and every local module it imports, relative or through the `@/` alias.
-const MIDDLEWARE = ['middleware.ts', 'middleware.js', 'src/middleware.ts', 'proxy.ts', 'src/proxy.ts'].find(existsSync);
+// pages/_document and every local module it imports, relative or through the `@/` alias: where the
+// server context that personalizes the first render is created.
+const DOCUMENT = ['pages/_document.tsx', 'pages/_document.jsx', 'pages/_document.ts', 'pages/_document.js', 'src/pages/_document.tsx'].find(existsSync);
 
 function resolveImport(from: string, spec: string): string | undefined {
   let base: string;
@@ -76,20 +79,12 @@ function closure(entry: string): string[] {
 }
 
 const codeOf = (files: string[]) => files.filter(isCode).map((f) => stripComments(read(f))).join('\n');
-const middlewareCode = () => (MIDDLEWARE ? codeOf(closure(MIDDLEWARE)) : '');
+const documentCode = () => (DOCUMENT ? codeOf(closure(DOCUMENT)) : '');
 
 // Identifiers mapped to what they were assigned, so a value or option held in a constant is read
 // through it.
 const assignments = (code: string) =>
   new Map([...code.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*([^;]{0,400})/g)].map((m) => [m[1], m[2]]));
-
-const quirksInMiddleware = () => {
-  const code = middlewareCode();
-  return (
-    /handleUniformRoute\s*\(\s*\{[\s\S]{0,400}?\bquirks\b/.test(code) ||
-    /uniformMiddleware\s*\(\s*\{[\s\S]{0,400}?\bquirks\b[\s\S]{0,400}?\}\s*\)\s*\(\s*\w+/.test(code)
-  );
-};
 
 // A cookie written with an expiry whose value is the serialized quirks, not a plain ID such as the
 // demo profile override, and read back under the same name before the lookup. Variables in the call
@@ -129,17 +124,17 @@ function cacheCookie(code: string) {
   return { written: writes.length > 0, read: names.some(isRead) };
 }
 
-// Passing the quirks in middleware is a precondition, not a test of its own: the baseline does it
-// unaided.
-test('the profile lookup runs in middleware and is cached per visitor', () => {
+// Credited by where the update runs, not by the name of a helper: a browser-only update in _app or a
+// component leaves the server HTML on the default variant.
+test('the profile lookup runs on the server context and is cached per visitor', () => {
   expect(
-    quirksInMiddleware(),
-    'the App Router picks the first-render variant in middleware: pass the CDP quirks per request with handleUniformRoute({ request, quirks })'
+    /\.update\(\s*\{[\s\S]{0,200}?\bquirks\b/.test(documentCode()),
+    'with SSR personalization the server context picks the first-render variant: in getInitialProps of pages/_document, await serverContext.update({ quirks }) before Document.getInitialProps renders'
   ).toBe(true);
-  const cache = cacheCookie(middlewareCode());
+  const cache = cacheCookie(documentCode());
   expect(
     cache.written,
-    'middleware runs on every request: keep the mapped quirks per visitor (a cookie with an expiry) instead of calling the Profile API on every page view'
+    'the document renders on every request: keep the mapped quirks per visitor (a cookie with an expiry) instead of calling the Profile API on every page view'
   ).toBe(true);
   expect(
     cache.read,
@@ -305,7 +300,7 @@ test('the mock profile API is switched on by its own flag, never by missing cred
 
   // The flag must gate the data the lookup returns, not only the demo UI.
   const lookups = files.filter(({ content }) => /collections\/users\/profiles/.test(content)).map(({ f }) => f);
-  const dataPath = [...new Set([...(MIDDLEWARE ? closure(MIDDLEWARE) : []), ...lookups.flatMap(closure)])].filter(isCode);
+  const dataPath = [...new Set([...(DOCUMENT ? closure(DOCUMENT) : []), ...lookups.flatMap(closure)])].filter(isCode);
   const gated = dataPath.some((f) => {
     const raw = stripComments(read(f));
     const blanked = blankStrings(raw);
@@ -332,21 +327,5 @@ test('fixture profiles hold raw Segment traits, not quirk values', () => {
         /["']?high_intent_golfers["']?\s*:\s*(true|false)\b/.test(content) && /["']?lifetime_value["']?\s*:\s*\d/.test(content)
     ),
     'fixtures hold what Segment returns (snake_case keys, real booleans and numbers) so the mock runs through the production mapping; fixtures of quirk values pass while the mapping is broken'
-  ).toBe(true);
-});
-
-test('the browser context receives the quirks the middleware applied', () => {
-  if (!quirksInMiddleware()) return; // measured only when the lookup runs in middleware
-  const COOKIE_READ = /document\.cookie|Cookies\.get\(|getCookie\(|cookies\.get\(/;
-  const handedOver = codeFiles().some(
-    ({ f, content }) =>
-      (/^\s*['"]use client['"]/.test(content) &&
-        /\.update\(\s*\{[\s\S]{0,200}?\bquirks\b/.test(content) &&
-        COOKIE_READ.test(codeOf(closure(f)))) ||
-      /ContextUpdateTransfer[\s\S]{0,200}?\bquirks\b/.test(content)
-  );
-  expect(
-    handedOver,
-    'the browser re-evaluates personalization with its own quirks and receives middleware quirks only through a consent-gated cookie on the first load: write the same mapped quirks into the browser context from a cookie the middleware sets'
   ).toBe(true);
 });

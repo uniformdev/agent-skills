@@ -220,8 +220,9 @@ the project state.
 | `automations-inbound-sync` | `uniform-automations` | greenfield, deterministic | inbound PIM sync: `incomingWebhook` trigger, a code handler (not Scout) for deterministic work, literal `process.env.UNIFORM_ENV_*` secret reads, `unauthorized` outcome checked before `rawBody` is parsed, `EntryManagementClient` + `permissions`, no secret value in logs |
 | `automations-outbound-sync` | `uniform-automations` | greenfield, deterministic | outbound search-index sync on publish: `entry.published` (not a stage, a save, or an inbound webhook), a code handler (not Scout), a CEL filter on `input.type` using `==` not JS `===`, `fetch` to the downstream URL rather than a vendor SDK, literal `process.env.UNIFORM_ENV_SEARCH_API_KEY`, no deploy to the live project |
 | `nextjs-breadcrumbs` | `uniform-breadcrumbs` | brownfield + LLM judge | adding breadcrumbs to a correct project: the component registered in the resolver, dynamic ancestor paths expanded with `Route`, **crumb titles resolved through `RouteClient.get` with a `select` projection**, the title field read from the component definition, `releaseId` forwarded, a Suspense boundary with a component (not an element) as its fallback; judge grades the ancestor chain, `:token` hrefs, server-only access, safe degradation and the title source |
-| `nextjs-cdp-personalization` | `uniform-cdp-personalization` | brownfield, deterministic | wiring Segment into personalization on a correct App Router project with no CDP code: the lookup run in middleware through `handleUniformRoute({ request, quirks })` and cached per visitor, the Profile API request naming its traits (`include`), quirk definitions staged with options outside `uniform-data/` (the existing quirk untouched), the mock behind its own server-side flag, fixtures of raw Segment traits, the same mapped quirks written into the browser context |
-| `nextjs-page-router-breadcrumbs` | `uniform-breadcrumbs`, `uniform-nextjs-page-router` | brownfield + LLM judge | the same task and the **same PROMPT.md, byte for byte**, on the Page Router (`canvas-next` + `canvas-react`, `withUniformGetServerSideProps`, `registerUniformComponent`), with the same checks minus Suspense: tests the skill's framework-neutrality claim rather than trusting it, and, with `nextjs-page-router-editor-experience`, one of the two fixtures that stage `uniform-nextjs-page-router` |
+| `nextjs-cdp-personalization` | `uniform-cdp-personalization` | brownfield, deterministic | wiring Segment into personalization on a correct App Router project with no CDP code: the lookup run in middleware through `handleUniformRoute({ request, quirks })` and cached per visitor in a cookie that is written and read back, the Profile API request naming its traits (`include`), quirk definitions staged outside `uniform-data/` (the existing quirk untouched), the mock data behind its own flag where the lookup chooses it (never behind missing credentials), fixtures of raw Segment traits, the cached quirks written into the browser context |
+| `nextjs-page-router-breadcrumbs` | `uniform-breadcrumbs`, `uniform-nextjs-page-router` | brownfield + LLM judge | the same task and the **same PROMPT.md, byte for byte**, on the Page Router (`canvas-next` + `canvas-react`, `withUniformGetServerSideProps`, `registerUniformComponent`), with the same checks minus Suspense: tests the skill's framework-neutrality claim rather than trusting it, and, with `nextjs-page-router-cdp-personalization` and `nextjs-page-router-editor-experience`, one of the three fixtures that stage `uniform-nextjs-page-router` |
+| `nextjs-page-router-cdp-personalization` | `uniform-cdp-personalization`, `uniform-nextjs-page-router` | brownfield, deterministic | the same task and the **same PROMPT.md, byte for byte**, on the Page Router with SSR personalization (`createUniformContext`, `enableNextSsr` in `_document`): the lookup applied with `update({ quirks })` on the server context in `_document` and cached per visitor, with the App Router twin's other checks minus the browser handover |
 | `search-add-faceted-search` | `uniform-search` | brownfield, deterministic | adding Uniform Search to a correct App Router project: the components and definitions scaffolded with the `create-uniform-search` CLI (asserted from the transcript) rather than reinvented, `@uniformdev/search` installed, the search types registered through the compat adapter without rewriting existing server components, the two public env vars declared without clobbering existing credentials (the search key identifies the project, so no project id), the project-map client sending `x-api-key` (the endpoint fails closed), the `mono-*` theme actually imported (not just written to disk), definitions staged as the vendored CLI package with `mode: 'create'` next to its config and not in `uniform-data/`, the package authored in the project's default locale, and the push handed to the user (no `sync push`, no MCP mutations) |
 
 Notes on reading particular fixtures:
@@ -288,7 +289,7 @@ Notes on reading particular fixtures:
   440 s and 5/5 in 685 s.
 - **Assertions strip comments before matching**, so an agent that quotes a rule back in a comment is
   not credited — or failed — for agreeing with it.
-- **The automations fixtures and `nextjs-cdp-personalization` use the full discovery skip set**
+- **The automations fixtures and the two CDP fixtures use the full discovery skip set**
   (`.claude`, `.agents`, `.cursor`, `.copilot-plugin`, `.skills-src`) rather than the shorter one in
   the other nextjs and forms fixtures.
   Keep it in step with `DISCOVERY_ROOT` in `experiments/lib/skill-install.ts`.
@@ -305,15 +306,20 @@ Notes on reading particular fixtures:
   in the trail modules. The Suspense check is App Router only; the Page Router has no boundary to
   stream behind. Component registration and `Route` expansion fail on most baseline runs rather
   than all of them; every other check fails on every run.
-- **`nextjs-cdp-personalization` runs the skill's workflow headless.** The prompt names Segment,
-  the three targets and the no-credentials demo need, says not to push and not to stop and ask, and
-  names no Uniform API. It stages `uniform-nextjs-app-router` alongside, whose middleware and
-  context APIs the skill links to. `uniform-data/quirk/visitorType.yaml` is a negative control that
-  the staged definitions must leave alone. Tests that return early when the code path they grade is
-  absent (no middleware lookup, nothing staged, no fixture profiles) read as n/a in the PR table.
-  The skill's non-mirror push rule is not asserted: the prompt asks the agent to say what to run, so
-  the command usually lands in chat, which the sandbox does not capture. The Page Router path, real
-  Segment calls, the push and Canvas authoring are not exercised.
+- **`nextjs-cdp-personalization` and `nextjs-page-router-cdp-personalization` run the skill's
+  workflow headless on both Next.js SDKs.** `PROMPT.md` is byte-identical across the two: it names
+  Segment, the three targets and the no-credentials demo need, says not to push and not to stop and
+  ask, and names no Uniform API. Each stages its framework skill alongside, as the plugin installs
+  it; the CDP skill names that skill but does not rely on it. `uniform-data/quirk/visitorType.yaml`
+  is a negative control that the staged definitions must leave alone. Checks are credited by where
+  the code runs, not by helper names: the mock flag counts only where the lookup chooses between
+  the CDP and the fixtures, and the cache cookie only when the same name is read back. The App
+  Router's browser handover returns early when the lookup is not in middleware, which the first
+  check already fails; an early return counts as a pass in the totals. The Page Router has no
+  handover check, since server quirks reach the browser in the server state. The skill's
+  non-mirror push rule is not asserted: the prompt asks the agent to say what to run, so the
+  command usually lands in chat, which the sandbox does not capture. Real Segment calls, the push
+  and Canvas authoring are not exercised.
 
 ## Running in CI
 

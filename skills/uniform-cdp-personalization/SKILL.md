@@ -1,6 +1,6 @@
 ---
 name: uniform-cdp-personalization
-description: Brings customer data platform (CDP) profiles into Uniform personalization as quirks. Audits how a project sets quirks today, then adds a server-side profile lookup, maps CDP traits and audiences onto quirk values authors can target, stages the quirk definitions for the user to push, and builds an opt-in mock profile API with profile switching for local development and demos. Segment's Profile API is the worked example; the workflow applies to any CDP with a profile lookup. Use when asked to personalize a Uniform site from Segment or another CDP; to map CDP audiences, computed traits or segments onto quirks; when CDP-based personalization never matches, applies only after a reload, or flickers; when building a fake CDP, demo visitor profiles or a persona switcher for a Uniform demo; or when reviewing an existing CDP integration. Covers the Next.js App Router and Page Router SDKs.
+description: Integrates Customer Data Platform (CDP) profiles—such as Segment—into Uniform personalization as quirks. Audits current quirk setups, implements server-side profile lookups, maps CDP traits and audiences to targetable quirks, stages definitions for deployment, and builds mock profile APIs with switching for local dev and demos. Resolves flickering or delayed CDP personalization. Use when connecting Uniform to Segment/CDPs, mapping audiences to quirks, or building demo persona switchers for Next.js App & Pages routers.
 license: MIT
 metadata:
   author: uniformdev
@@ -16,8 +16,8 @@ traits to quirk values, the quirk definitions authors target, and a mock profile
 development and demos.
 
 The SDK calls used here (`handleUniformRoute`, `context.update`, the Page Router context factory)
-are documented in [uniform-nextjs-app-router](../uniform-nextjs-app-router/SKILL.md) and
-[uniform-nextjs-page-router](../uniform-nextjs-page-router/SKILL.md).
+are covered by the `uniform-nextjs-app-router` and `uniform-nextjs-page-router` skills, if
+installed.
 
 ## Workflow
 

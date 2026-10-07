@@ -79,16 +79,17 @@ options:
 
 Stage the files in a directory of their own (for example `uniform-cdp/quirks/<id>.yaml`), not in
 the [sync directory](audit.md#uniform-project): there a mirror pull deletes them before they are
-pushed, and a sync push sends them along with everything else.
+pushed, and a sync push sends them along with everything else. The `uniform-sdk` skill's rule
+against touching serialized Uniform data, if that skill is installed, is about the sync directory:
+the audit only reads it, and the staged files are new and live outside it.
 
 ## Getting them into Uniform
 
 Hand the user the commands unless they chose to create the definitions now
 ([audit.md](audit.md#questions)): creating them changes the live project before the user has
 reviewed the names and options. Either way, push with `--mode createOrUpdate`: the directory holds
-only the CDP quirks, and the default mirror mode
-([push modes](../../uniform-sdk/references/cli-reference.md#common-flags)) would delete every other
-quirk the project defines. Scripts make the hand-over repeatable:
+only the CDP quirks, and the default mirror mode would delete every other quirk the project
+defines. Scripts make the hand-over repeatable:
 
 ```json
 "uniform:cdp:whatif": "uniform context quirk push ./uniform-cdp/quirks --mode createOrUpdate --what-if",
