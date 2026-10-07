@@ -12,7 +12,7 @@ import { environment } from '@vercel/agent-eval/eval';
 //   - … and the cache is actually wired to UniformComposition (the silent-null trap:
 //     `compositionCache` is an OPTIONAL prop, so forgetting it is not a type error and
 //     every lookup returns null — the rail renders empty and looks like a content bug)
-//   - panel content is rendered through UniformSlot filtered by _id, not rebuilt from raw
+//   - panel content is rendered through UniformSlot, active child picked by _id, not rebuilt from raw
 //     parameters (rebuilding forfeits personalization, patterns and editor click targets)
 //   - labels the brief calls editable use UniformText
 //   - the interactive shell is a client component
@@ -154,15 +154,22 @@ test('wires the composition cache into UniformComposition', () => {
 
 // Both halves must hold *in the same file*: `UniformSlot` alone is trivially true (the
 // starter already renders slots), and an `_id` comparison alone could live anywhere. What
-// this eval is actually about is the render function that filters a rendered slot by id.
-test('renders panel content through the slot, filtered by id', () => {
-  const filtering = sourceFiles()
+// this eval is actually about is the render function that picks the active child of a rendered
+// slot by id. Any of these counts: `_id === active` to show it, `_id !== active` to hide the rest,
+// or the child's `_id` attached to its wrapper (`data-panel-id={_id}`) for a client component to
+// pick by. A bare `key={_id}` is not picking anything.
+test('renders panel content through the slot, active child picked by id', () => {
+  const pickingById = sourceFiles()
     .map(({ f, content }) => ({ f, content: stripComments(content) }))
-    .filter(({ content }) => /UniformSlot/.test(content) && /_id\s*===|===\s*[^;]{0,40}_id/.test(content));
+    .filter(
+      ({ content }) =>
+        /UniformSlot/.test(content) &&
+        /_id\s*[!=]==|[!=]==\s*[^;]{0,40}_id|(?<!\bkey)=\{\s*_id\s*\}|\$\{\s*_id\s*\}/.test(content)
+    );
 
   expect(
-    filtering.map(({ f }) => f),
-    'the active category\'s content must come from rendering the panel slot and filtering to the matching child — a UniformSlot render function that compares the child _id against the active category. Rebuilding children from raw parameter values instead discards personalization, pattern links and the visual editor\'s click targets'
+    pickingById.map(({ f }) => f),
+    'the active category\'s content must come from rendering the panel slot and showing the matching child — a UniformSlot render function that compares the child _id against the active category. Rebuilding children from raw parameter values instead discards personalization, pattern links and the visual editor\'s click targets'
   ).not.toEqual([]);
 });
 
@@ -236,7 +243,7 @@ test('the mega menu is modeled and rendered the way the brief describes', async 
       'slots holding child components, rather than one component rendering the whole menu; ' +
       '(2) the category rail is built from data read out of the composition cache (raw child ' +
       'component instances), while the panel content for the active category is rendered by ' +
-      'passing it through UniformSlot and filtering on the child _id — the panel content must ' +
+      'passing it through UniformSlot and picking the active child by its _id — the panel content must ' +
       'NOT be reconstructed from raw parameter values, since that would discard ' +
       'personalization, pattern links and the visual editor\'s click targets; ' +
       '(3) the megaMenu layout branches on a display variant (not on an authored parameter), ' +

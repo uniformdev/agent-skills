@@ -61,8 +61,8 @@ builds fail, and the failure is silent. See
 The shape, framework-neutral:
 
 - The **rail** (labels) comes from raw child component instances, read server-side.
-- The **panel** (content) comes from rendering the slot normally and filtering to the
-  active child by `_id`.
+- The **panel** (content) comes from rendering the slot normally, keeping every child
+  mounted, and showing the active one by `_id`.
 
 Never rebuild children from raw data — read labels from it, render children through the slot.
 

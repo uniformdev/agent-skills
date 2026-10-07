@@ -65,7 +65,7 @@ Set minimum/maximum component counts only when the layout or a deliberate design
 - A "CTAs" slot might cap at 2 buttons to protect the design.
 - Leave counts open everywhere else — unnecessary minimums block authors from saving work in progress.
 
-If the layout breaks visually when a required slot is still empty during editing, implement an `emptyPlaceholder` on `UniformSlot` in code (see [component definitions](component-definitions.md)).
+If the layout breaks visually when a required slot is still empty during editing, give the slot an empty-slot placeholder in code. The API depends on the SDK: `emptyPlaceholder` on each `UniformSlot` in the Next.js Page Router, and `resolveEmptyPlaceholder` on `UniformComposition` and `UniformPlayground` in the App Router, which has no `emptyPlaceholder`. The `uniform-nextjs-page-router` and `uniform-nextjs-app-router` skills, if installed, cover each one.
 
 ## Slots vs parameter groups
 

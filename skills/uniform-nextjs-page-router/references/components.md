@@ -41,6 +41,17 @@ function Hero() {
 }
 ```
 
+### Empty slots in the editor
+
+While editing, Canvas puts a placeholder item into every empty slot. Give each layout-critical slot an `emptyPlaceholder`: a node with the size the first item will take. It renders only in the editor, never to visitors, and only in place of what `resolveRenderer` returned for the placeholder item. The default resolver returns a component for it; a custom one that returns `null` for unknown types leaves the slot with no placeholder and no drop target.
+
+```tsx
+<UniformSlot name="content" emptyPlaceholder={<div style={{ minHeight: 120 }} />} />
+<UniformSlot name="badges" emptyPlaceholder={null} /> {/* optional slot, no room for a placeholder */}
+```
+
+The `uniform-editor-experience-review` skill, if installed, covers sizing the placeholder per slot.
+
 ### Reading a slot's child data
 
 `UniformSlot` renders children; it does not hand them to you. There is **no `children` render
@@ -56,6 +67,8 @@ import { useUniformCurrentComponent } from "@uniformdev/canvas-react";
 const { data } = useUniformCurrentComponent();
 const children = data?.slots?.["links"] ?? []; // ComponentInstance[], parameters included
 ```
+
+While editing, an empty slot holds a placeholder item here too, so a rail built from this array gets a blank entry. Drop it with `isComponentPlaceholderId(child._id)` from `@uniformdev/canvas` before building or counting.
 
 Use that for metadata only. Keep rendering the children through `UniformSlot` — rebuilding
 them from their parameters discards personalization, A/B tests, pattern links and the
@@ -108,6 +121,8 @@ function Hero() {
   );
 }
 ```
+
+In Canvas an empty value renders the placeholder as `<p><i>…</i></p>`, in the Preview tab as well as the Edit tab. A parameter that was never set renders nothing. To set a project-wide default for both `UniformText` and `UniformRichText`, pass `contextualEditingDefaultPlaceholder` to `UniformComposition` **and** `UniformPlayground`; a component's own `placeholder` overrides it.
 
 ## Rendering asset parameters
 

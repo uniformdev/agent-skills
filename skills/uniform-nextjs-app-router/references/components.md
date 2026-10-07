@@ -61,7 +61,7 @@ CRITICAL rules:
 2. Parameters are accessed via the `parameters` object — not destructured directly from props.
 3. All parameters MUST be optional (`?`) — they can be undefined at runtime even if marked required in the definition (e.g. a newly added component not yet filled in).
 
-> **TypeScript:** rule #3 makes your parameter props optional, but `UniformText`/`UniformRichText` type their `parameter` prop as required.Ppass a non-null assertion instead — `parameter={title!}`. This is safe at runtime: these components render the `placeholder` when the value is empty or the parameter is undefined. 
+> **TypeScript:** rule #3 makes your parameter props optional, but `UniformText`/`UniformRichText` type their `parameter` prop as required. Pass a non-null assertion instead — `parameter={title!}`. This is safe at runtime: both components render nothing when the parameter is undefined.
 
 ```tsx
 import {
@@ -84,16 +84,12 @@ export const HeroComponent = ({
     <section>
       <UniformText
         component={component}
-        parameter={title}
+        parameter={title!}
         as="h1"
         className="title"
         placeholder="Enter title here"
       />
-      <UniformRichText
-        component={component}
-        parameter={description}
-        placeholder="Enter description here"
-      />
+      <UniformRichText component={component} parameter={description!} />
     </section>
   );
 };
@@ -154,10 +150,12 @@ Renders rich text (stored as Lexical JSON) to HTML with full formatting support:
   parameter={description}    // Required: the ComponentParameter<RichTextParamValue>
   as="div"                  // Optional: wrapper element (default: "div"), null for no wrapper
   className="prose"          // Optional: CSS class
-  placeholder="Enter text"   // Optional: placeholder shown in editor when empty
+  placeholder="Enter text"   // Optional: never shown in Canvas — see below
   resolveRichTextRenderer={customResolver} // Optional: custom node renderers (a function — see the Client Component note above)
 />
 ```
+
+**The placeholder never shows in Canvas.** While editing, the SDK marks only `text` parameters as editable, and `UniformRichText` renders nothing for an empty value on an unmarked parameter, or for a missing one. To give authors something to click, render your own hint while `context.pageState.previewMode === "editor"` (the Edit tab), and render `UniformRichText` once there is a value. Never hand-build `_contextualEditing` on the parameter to force the placeholder: the SDK attaches it only while editing, so a hand-built one shows the placeholder to visitors too. The `uniform-editor-experience-review` skill, if installed, has the full pattern.
 
 ## Rendering slots
 
@@ -179,6 +177,24 @@ export const PageComponent = ({ slots }: ComponentProps<PageProps, PageSlots>) =
   );
 };
 ```
+
+### Empty slots in the editor
+
+While editing, Canvas puts a placeholder item into every empty slot. `UniformSlot` has no `emptyPlaceholder` prop (that is the Page Router API). Pass `resolveEmptyPlaceholder` to `UniformComposition` **and** to `UniformPlayground`, because patterns are edited in the playground. Without it, placeholder items go through `resolveComponent` like any other component, so your fallback renders in every empty slot.
+
+```tsx
+import type { UniformCompositionProps } from "@uniformdev/next-app-router";
+
+// The option and result types are not exported by name; derive them.
+type ResolveEmptyPlaceholder = NonNullable<UniformCompositionProps["resolveEmptyPlaceholder"]>;
+
+// Receives { parentComponent, component, slotName, slotIndex }. Return { component: null } to render nothing.
+export const resolveEmptyPlaceholder: ResolveEmptyPlaceholder = () => ({
+  component: () => <div style={{ minHeight: 80 }} />,
+});
+```
+
+The `uniform-editor-experience-review` skill, if installed, covers sizing the placeholder per slot.
 
 ### Custom slot rendering
 
@@ -212,12 +228,20 @@ export const PageComponent = ({ slots }: ComponentProps<PageProps, PageSlots>) =
 
 ### getUniformSlot utility
 
-Extract slot items as an array (`ReactNode[] | undefined`). Useful to count items, conditionally render, or apply array operations before rendering:
+Extract slot items as an array (`ReactNode[] | undefined`). Useful to conditionally render or apply array operations before rendering:
 
 ```tsx
 import { getUniformSlot } from "@uniformdev/next-app-router/component";
 
 const items = getUniformSlot({ slot: slots.content });
+```
+
+While editing, an empty slot still holds its placeholder item, so `items.length` is at least 1. To count real items or branch on whether a slot is empty, filter the slot's items with `isComponentPlaceholderId` from `@uniformdev/canvas`. The App Router SDK does not depend on that package, so add it to `package.json` at the version of your other `@uniformdev` packages if it is not listed. A slot missing from the component's data is `undefined`, so guard it:
+
+```tsx
+import { isComponentPlaceholderId } from "@uniformdev/canvas";
+
+const hasContent = slots.content?.items.some((item) => item && !isComponentPlaceholderId(item._id)) ?? false;
 ```
 
 To access the full `ComponentInstance` data behind slot items (composition-level metadata, parameter values), use the composition cache — see `references/advanced.md`.

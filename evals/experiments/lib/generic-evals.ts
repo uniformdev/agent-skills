@@ -25,7 +25,9 @@ export const GENERIC_EVALS = [
   'nextjs-app-router-add-component',
   'nextjs-app-router-setup',
   'nextjs-breadcrumbs',
+  'nextjs-editor-experience',
   'nextjs-navigation-mega-menu',
   'nextjs-page-router-breadcrumbs',
+  'nextjs-page-router-editor-experience',
   'search-add-faceted-search',
 ];
