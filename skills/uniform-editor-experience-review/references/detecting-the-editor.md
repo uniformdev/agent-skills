@@ -87,7 +87,8 @@ Check these shapes in the project before relying on them:
 ```bash
 # Locate the packages (works with npm, pnpm and yarn layouts)
 find node_modules -path '*@uniformdev/next-app-router-shared/dist/index.d.ts' -not -path '*/.cache/*' | head -1
-find node_modules -path '*@uniformdev/canvas-react/dist/index.d.ts' | head -1
+find node_modules -path '*@uniformdev/canvas-react/dist/index.d.ts' -not -path '*/.cache/*' | head -1
+find node_modules -path '*@uniformdev/canvas/dist/index.d.ts' -not -path '*/.cache/*' | head -1
 
 # App Router: the context every component receives, and the previewMode field
 awk '/^type CompositionContext = /,/^};/' <next-app-router-shared>/dist/index.d.ts

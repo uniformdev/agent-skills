@@ -110,29 +110,22 @@ consistent.
   that returns markup for an empty value hides the placeholder.
 - **Function props.** `placeholder` also takes a function, `({ id }) => …`.
   - App Router: from a Server Component, pass strings. Function props, `placeholder` and
-    `render` alike, cannot cross into the client text component; see the App Router skill's
-    [components.md](../../uniform-nextjs-app-router/references/components.md).
+    `render` alike, cannot cross into the client text component.
   - Page Router: set a project-wide default once with `contextualEditingDefaultPlaceholder` on
     `<UniformComposition>` **and** on `<UniformPlayground>`, or patterns get none. It covers
     `UniformRichText` too, and a component's own `placeholder` overrides it.
 
 ## `UniformRichText` placeholders
 
-The two SDKs differ here:
+- **App Router:** the placeholder never shows in Canvas, so render your own hint in the Edit tab.
+- **Page Router:** the placeholder renders as `<p><i>…</i></p>`, in both tabs.
+- **Both:** a parameter that was never set renders nothing, placeholder included.
 
-| | App Router | Page Router |
-|---|---|---|
-| Empty rich-text value in Canvas | Renders **nothing** — the placeholder never shows | Renders the placeholder in `<p><i>…</i></p>`, in both tabs |
-| Parameter missing entirely | Renders nothing | Renders nothing |
-
-In editor renders the App Router SDK marks only `text` parameters with `_contextualEditing`, and
-its `UniformRichText` renders the placeholder and the empty-value output only for a marked
-parameter. Render your own hint in the Edit tab.
+The `uniform-nextjs-app-router` and `uniform-nextjs-page-router` skills, if installed, explain why.
 
 **Add `@uniformdev/richtext` to `package.json`** if it is not listed, at the version of the
-project's other `@uniformdev` packages
-([uniform-sdk](../../uniform-sdk/SKILL.md#pin-all-uniform-packages-to-the-same-version)). The SDK
-depends on it, so the import resolves without the entry under npm and breaks under pnpm.
+project's other `@uniformdev` packages. The SDK depends on it, so the import resolves without the
+entry under npm and breaks under pnpm.
 
 ```tsx
 import { isRichTextValueConsideredEmpty } from "@uniformdev/richtext";

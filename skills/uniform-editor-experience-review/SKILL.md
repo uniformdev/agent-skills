@@ -15,8 +15,7 @@ an iframe, so whatever the page hides cannot be selected on the page: an empty b
 panel, an inactive slide, an empty slot with no height.
 
 The preview routes, `resolveComponent` and the component APIs are in the
-[uniform-nextjs-app-router](../uniform-nextjs-app-router/SKILL.md) and
-[uniform-nextjs-page-router](../uniform-nextjs-page-router/SKILL.md) skills.
+`uniform-nextjs-app-router` and `uniform-nextjs-page-router` skills, if they are installed.
 
 ## Editor signals
 
@@ -111,7 +110,8 @@ Apply the decision rules and silent failures below, then run the
 - **No `useIsEditMode`, `<EditorOnly>` or `withPlaceholder`** in any Uniform package. Read the
   signals above and branch on them.
 - **No `emptyPlaceholder` on the App Router `UniformSlot`.** Empty slots go through
-  `resolveEmptyPlaceholder`. [slot-placeholders.md](references/slot-placeholders.md)
+  `resolveEmptyPlaceholder`; the `uniform-nextjs-app-router` skill, if installed, has the API.
+  [slot-placeholders.md](references/slot-placeholders.md)
 - **No selection hook in the App Router SDK**, and `canvas-react`'s
   `useUniformContextualEditingState` is silently inert there. Use the
   [channel hook](references/interactive-components.md#app-router-selection-hook).

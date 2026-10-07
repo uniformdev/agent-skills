@@ -48,7 +48,7 @@ Suggested severity levels:
 - [ ] Min/max counts only where the layout or a deliberate design constraint requires them
 - [ ] No blocks holding visual child components (should be slots); block parameters only for non-visual structured data or custom-rendered data arrays
 - [ ] Nesting depth stays within 2–3 levels
-- [ ] Layout-critical slots have `emptyPlaceholder` implemented in code
+- [ ] Layout-critical slots have an empty-slot placeholder in code: `emptyPlaceholder` on `UniformSlot` (Page Router), or `resolveEmptyPlaceholder` on `UniformComposition` and `UniformPlayground` (App Router)
 
 ### Granularity
 

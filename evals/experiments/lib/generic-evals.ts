@@ -28,5 +28,6 @@ export const GENERIC_EVALS = [
   'nextjs-editor-experience',
   'nextjs-navigation-mega-menu',
   'nextjs-page-router-breadcrumbs',
+  'nextjs-page-router-editor-experience',
   'search-add-faceted-search',
 ];

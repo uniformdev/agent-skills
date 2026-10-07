@@ -21,6 +21,9 @@ The two SDKs put the placeholder in different places:
 | Not provided | Placeholder items go through `resolveComponent` like any other component, so whatever it returns for an unmapped type renders in every empty slot | Placeholder items go through `resolveRenderer`, and whatever it returns renders in every empty slot |
 | Turned off | `{ component: null }` | `emptyPlaceholder={null}` |
 
+The API itself is covered under "Empty slots in the editor" in the `uniform-nextjs-app-router` and
+`uniform-nextjs-page-router` skills, if installed. This file covers sizing.
+
 ## App Router: one resolver for the project
 
 Keep it next to `resolveComponent`, keyed by parent component type and then slot name, with a
@@ -100,8 +103,8 @@ Because the placeholder is a real item, anything that counts or tests a slot see
 - **Filter before counting** with `isComponentPlaceholderId` from `@uniformdev/canvas`, the
   predicate the SDKs use themselves. It handles an item without an `_id` and matches both id
   forms, `placeholder` and `placeholder_…`; a hand-rolled `startsWith("placeholder_")` misses the
-  first. The full recipe is in the navigation skill's
-  [slot-data-access.md](../../uniform-navigation/references/slot-data-access.md#technique-4--detect-emptiness-without-counting).
+  first. Guard the item itself too, since slot items are nullable:
+  `items.filter((item) => item && !isComponentPlaceholderId(item._id))`.
 - **A layout that hides an empty region** (an aside column, an actions bar) must still show it in
   the Edit tab, or the author cannot drop the first item in: `hasContent || isEditTab(context)`.
 - **Carousel dots, "1 of N" counters and grid column counts** use the filtered count. The

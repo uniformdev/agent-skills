@@ -17,7 +17,7 @@ Two things the shell needs, from two different places:
 | Need | Source |
 |---|---|
 | Rail labels (text, id, icon) | Raw child component instances, read server-side |
-| Panel content | The slot itself, rendered and filtered by id |
+| Panel content | The slot itself, every child rendered, the active one shown by id |
 
 **Never rebuild children from raw data.** Reconstructing a child from its parameters throws
 away personalization, A/B tests, pattern links, and the editor's click targets. Read
@@ -41,7 +41,7 @@ through. Do that first; find the composition root during [discovery](discovery.m
 
 What is navigation-specific is what you do with the instances once you have them: map the
 slot's items to their instances and pull out the few values the rail draws. Keep the item's
-`_id` — it is the join key technique 2 filters on, so it has to survive this step:
+`_id` — it is the join key technique 2 uses to pick the active child, so it has to survive this step:
 
 ```ts
 // CATEGORY_TYPE is your category component's public id.
@@ -82,25 +82,37 @@ import, to the module's default export, so the read happens while the code is st
 server. Wrapping the already-imported client component instead runs the cache read in the
 client bundle, where the cache does not exist and every lookup is `undefined`.
 
-## Technique 2 — render the slot, filter to the active child
+## Technique 2 — render the slot, show the active child
 
 *App Router. The Page Router has no slot render prop — see the table below.*
 
-Render the panel slot normally and emit only the active child. The children stay real
-Uniform children; you are choosing which to show.
+Render the panel slot normally, keep every child mounted, and hide the inactive ones. The
+children stay real Uniform children; you are choosing which to show.
 
 ```tsx
 <UniformSlot slot={slots.panelSlot}>
-  {({ child, _id, key }) =>
-    _id === activeCategoryId ? <Fragment key={key}>{child}</Fragment> : <Fragment key={key} />
-  }
+  {({ child, _id, key }) => {
+    const isActive = _id === activeCategoryId;
+    return (
+      <div key={key} hidden={!isActive}>
+        {child}
+      </div>
+    );
+  }}
 </UniformSlot>
 ```
 
-Keep the `key` on whatever you return for a non-match, including an empty fragment.
+Do not drop the inactive children instead. An unmounted child has no editor markers, so
+selecting its category in Canvas's component tree does nothing. If the panel animates, hide
+inactive children with a class rather than `hidden`, and gate `inert` as
+[interaction-and-a11y.md](interaction-and-a11y.md) does. To show the category an author selects
+in the editor, the `uniform-editor-experience-review` skill, if installed, covers following the
+Canvas selection.
 
 The same slot can be rendered more than once. Mobile typically drops the rail and renders one
-section per category, reusing the slot with a different filter each time.
+section per category, reusing the slot each time. There, each section emits only its own
+child, which is fine: every child is still mounted once, in its own section. Keep the `key` on
+whatever you return for the other children, including an empty fragment.
 
 ## Technique 3 — role-switch a child with context
 
@@ -113,7 +125,7 @@ Provide context from the shell, consume it in the child:
 ```tsx
 // shell
 <MegaMenuContext.Provider value={{ isInsideCategorizedMegaMenu: true }}>
-  {/* filtered slot */}
+  {/* the panel slot, technique 2 */}
 </MegaMenuContext.Provider>
 
 // child
@@ -155,7 +167,7 @@ expectation — so check before assuming technique 2 is available:
 |---|---|---|
 | Slot render prop | Yes, but it yields only `_id` and an opaque child | **None at all** |
 | Raw child data | Needs the composition cache | Available directly from the current component |
-| So technique 2 (filter by `_id`) | Works | Does not port — filter the raw data instead |
+| So technique 2 (show the active child by `_id`) | Works | Does not port — find the active index in the raw data, then hide the other items in a module-scope `wrapperComponent` that reads the index from a context |
 
 The per-router mechanics and their traps live in the framework skills — the composition cache
 in [uniform-nextjs-app-router/references/advanced.md](../../uniform-nextjs-app-router/references/advanced.md),

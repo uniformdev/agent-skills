@@ -53,9 +53,8 @@ component that receives `<UniformSlot>` as `children` gets one child per slot it
 
 A hidden item can be selected in the component tree but not clicked on the page, so pair this
 with one of the patterns below. Closed panels hidden with `inert` must also drop it while in
-Canvas, because `inert` swallows the clicks an author uses to select; the navigation skill's
-[interaction-and-a11y.md](../../uniform-navigation/references/interaction-and-a11y.md) covers this
-for flyouts.
+Canvas, because `inert` swallows the clicks an author uses to select. The `uniform-navigation`
+skill, if installed, covers this for flyouts.
 
 ## Stop motion in the Edit tab
 
@@ -174,7 +173,7 @@ Canvas's in-context script, which both SDKs load, posts an
 the tab changes, and keeps the latest state on `window.__UNIFORM_CONTEXTUAL_EDITING__.state`.
 `canvas-react`'s hook reads the same two. Listen with the channel API from `@uniformdev/canvas`;
 if the project does not depend on it directly, add it at the same version as its other
-`@uniformdev` packages ([uniform-sdk](../../uniform-sdk/SKILL.md#pin-all-uniform-packages-to-the-same-version)):
+`@uniformdev` packages:
 
 ```tsx
 "use client";
@@ -225,9 +224,9 @@ export function useCanvasEditorState(enabled: boolean): CanvasEditorState | unde
 - Check it once in Canvas: select a slide in the component tree and confirm the carousel moves.
 
 The descendant map needs the children's data, which the App Router's `slots` prop does not carry.
-If the project passes a composition cache to `<UniformComposition>` (the App Router skill's
-[advanced.md](../../uniform-nextjs-app-router/references/advanced.md) covers it), a server
-component can read its own subtree and send the map to the client, only while in Canvas:
+If the project passes a composition cache to `<UniformComposition>` (the
+`uniform-nextjs-app-router` skill, if installed, covers it), a server component can read its own
+subtree and send the map to the client, only while in Canvas:
 
 ```tsx
 // Carousel.tsx — server component
@@ -293,9 +292,7 @@ import { IS_RENDERED_BY_UNIFORM_ATTRIBUTE } from "@uniformdev/canvas";
 ## Tabs whose labels come from the children
 
 A common shape: the parent renders the tab bar from a text parameter on each child tab component,
-so the labels print as plain strings the author cannot click to edit. Use one of the navigation
-skill's two answers
-([interaction-and-a11y.md](../../uniform-navigation/references/interaction-and-a11y.md#in-the-visual-editor)):
+so the labels print as plain strings the author cannot click to edit. Use one of two answers:
 render the label through the slot as well, or keep the plain string and tell authors the labels
 are edited from the component tree. When the label does render through `UniformText`, also switch
 tabs when it receives focus in the Edit tab, so clicking a label to edit it shows its panel.

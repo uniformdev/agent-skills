@@ -41,6 +41,17 @@ function Hero() {
 }
 ```
 
+### Empty slots in the editor
+
+While editing, Canvas puts a placeholder item into every empty slot. Give each layout-critical slot an `emptyPlaceholder`: a node with the size the first item will take. It renders only in the editor, never to visitors. Without it, the placeholder item goes through `resolveRenderer` like any other component.
+
+```tsx
+<UniformSlot name="content" emptyPlaceholder={<div style={{ minHeight: 120 }} />} />
+<UniformSlot name="badges" emptyPlaceholder={null} /> {/* optional slot, no room for a placeholder */}
+```
+
+The `uniform-editor-experience-review` skill, if installed, covers sizing the placeholder per slot.
+
 ### Reading a slot's child data
 
 `UniformSlot` renders children; it does not hand them to you. There is **no `children` render
@@ -108,6 +119,8 @@ function Hero() {
   );
 }
 ```
+
+In Canvas an empty value renders the placeholder as `<p><i>…</i></p>`, in the Preview tab as well as the Edit tab. A parameter that was never set renders nothing. To set a project-wide default for both `UniformText` and `UniformRichText`, pass `contextualEditingDefaultPlaceholder` to `UniformComposition` **and** `UniformPlayground`; a component's own `placeholder` overrides it.
 
 ## Rendering asset parameters
 
