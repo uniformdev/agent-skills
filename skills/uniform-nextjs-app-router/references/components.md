@@ -84,12 +84,12 @@ export const HeroComponent = ({
     <section>
       <UniformText
         component={component}
-        parameter={title}
+        parameter={title!}
         as="h1"
         className="title"
         placeholder="Enter title here"
       />
-      <UniformRichText component={component} parameter={description} />
+      <UniformRichText component={component} parameter={description!} />
     </section>
   );
 };
@@ -236,12 +236,12 @@ import { getUniformSlot } from "@uniformdev/next-app-router/component";
 const items = getUniformSlot({ slot: slots.content });
 ```
 
-While editing, an empty slot still holds its placeholder item, so `items.length` is at least 1. To count real items or branch on whether a slot is empty, filter the slot's items with `isComponentPlaceholderId` from `@uniformdev/canvas`:
+While editing, an empty slot still holds its placeholder item, so `items.length` is at least 1. To count real items or branch on whether a slot is empty, filter the slot's items with `isComponentPlaceholderId` from `@uniformdev/canvas`. The App Router SDK does not depend on that package, so add it to `package.json` at the version of your other `@uniformdev` packages if it is not listed. A slot missing from the component's data is `undefined`, so guard it:
 
 ```tsx
 import { isComponentPlaceholderId } from "@uniformdev/canvas";
 
-const hasContent = slots.content.items.some((item) => item && !isComponentPlaceholderId(item._id));
+const hasContent = slots.content?.items.some((item) => item && !isComponentPlaceholderId(item._id)) ?? false;
 ```
 
 To access the full `ComponentInstance` data behind slot items (composition-level metadata, parameter values), use the composition cache — see `references/advanced.md`.

@@ -212,7 +212,7 @@ the project state.
 | `nextjs-app-router-setup` | `uniform-nextjs-app-router` | greenfield | v2 SDK choice, edge middleware, `uniform/[code]` route, no `UniformContext` in layout, `resolveComponent` mapping |
 | `nextjs-app-router-add-component` | `uniform-nextjs-app-router` | brownfield + judge | extending a correct project: slot rendering via `UniformSlot`, `UniformText` (not Page Router `parameterId`), no regression to middleware/layout/mappings; judge grades RSC idioms |
 | `nextjs-editor-experience` | `uniform-editor-experience-review` | brownfield apply, deterministic | the review workflow's apply path on a seeded App Router component set: editor-only states gated on the Edit tab (`previewMode`), an own hint for empty rich text, `resolveEmptyPlaceholder` and `isComponentPlaceholderId` for slots, `gap` instead of `> * + *`, carousel selection followed over the Canvas channel, slides, tab panels and accordion panels kept mounted, no hand-built `_contextualEditing`, a playground-only pattern frame with clickable controls |
-| `nextjs-page-router-editor-experience` | `uniform-editor-experience-review`, `uniform-nextjs-page-router` | brownfield apply, deterministic | the same task and the **same PROMPT.md, byte for byte**, on the Page Router (`canvas-next` + `canvas-react`, `registerUniformComponent`): editor-only states gated on `previewMode`, a per-slot `emptyPlaceholder` on the layout-critical slots (not `resolveEmptyPlaceholder`), `isComponentPlaceholderId` and no `> * + *`, the carousel following the selection through `useUniformContextualEditingState({ global: true })`, slides, tab panels and accordion panels kept mounted, `wrapperComponent` at module scope, a playground `decorators` frame keyed by pattern type with clickable controls |
+| `nextjs-page-router-editor-experience` | `uniform-editor-experience-review`, `uniform-nextjs-page-router` | brownfield apply, deterministic | the same task and the **same PROMPT.md, byte for byte**, on the Page Router (`canvas-next` + `canvas-react`, `registerUniformComponent`): `isComponentPlaceholderId` and no `> * + *`, the carousel following the selection through `useUniformContextualEditingState({ global: true })`, slides, tab panels and accordion panels kept mounted, `wrapperComponent` at module scope, a playground `decorators` frame keyed by pattern type with clickable controls |
 | `nextjs-navigation-mega-menu` | `uniform-navigation` | brownfield + judge | building a mega menu in a project with no navigation at all: reading child data through the composition cache and wiring it to `UniformComposition` (the optional-prop silent-null trap), rendering the panel through `UniformSlot` with the active child picked by `_id` rather than rebuilding children, inline-editable labels, a client component for hover state, `aria-expanded` + Escape; judge grades variant branching, mobile sections, and `inert` on closed panels |
 | `mesh-data-connector` | `uniform-mesh` | greenfield + judge, 4 agents | building a Mesh data connector from scratch: a manifest declaring a data connector, `useMeshLocation` + `@uniformdev/design-system` UI (not hand-rolled), data source + resource editors, `MeshApp` provider, `"use client"` for App Router; judge grades secrets handling and design-system UI |
 | `forms-add-form` | `uniform-forms` | brownfield + judge | adding a newsletter signup form: fields as separate components (not one monolithic form), new types registered in `resolveComponent`, namespaced/labelled `fields` payload, a generic (non-hardcoded) API handler, server-side re-validation, no `alert()`/`confirm()`, `aria-live` status, personalization quirk set client-side only after a 2xx |
@@ -267,19 +267,24 @@ Notes on reading particular fixtures:
   `searchBoxAutocomplete` unmapped. Every cold run hand-rolled a fetch client behind a proxy
   API route, invented its own component set and type ids, and wrote definitions as
   `uniform-data/` YAML. Run artifacts stay local under the git-ignored `evals/results/`.
-- **`nextjs-editor-experience` and `nextjs-page-router-editor-experience` run a review workflow headless,
-  on both Next.js SDKs.** The skill normally stops for the user to pick fixes; the prompt says to apply
+- **`nextjs-editor-experience` and `nextjs-page-router-editor-experience` run a review workflow headless, on
+  both Next.js SDKs.** The skill normally stops for the user to pick fixes; the prompt says to apply
   everything recommended (the skill's own skip-the-question rule) and describes only symptoms, so the fixes
   need knowledge the fixture cannot teach by example. `PROMPT.md` is byte-identical across the two, and each
-  stages its framework skill alongside, for the same reason as the navigation fixture. The seeds match where
-  the SDKs share a gap. The App Router adds the rich-text placeholder and a hand-built `_contextualEditing`;
-  the Page Router adds the per-slot `emptyPlaceholder`, the `global` selection hook, a module-scope
-  `wrapperComponent` and the experimental `decorators` frame. Only checks that fail without the skill are
-  kept. A cold agent already keeps empty components and regions visible in the editor and forces the
-  accordion open, but gates them on `isContextualEditing`, so the Edit-tab gate is asserted once across
-  every component that gains an editor-only state. App Router, one baseline and two with-skill runs (Vercel
-  sandbox, Claude Code on Sonnet 4.6): baseline 0/8 in 657 s, with-skill 8/8 in 730 s and 8/8 in 641 s.
-  Page Router: not yet measured.
+  stages its framework skill alongside, because the SDK APIs the fixes use are documented there; the review
+  skill keeps a one-line version of each. Only checks that fail without the skill are kept, so the two sets
+  differ. On the App Router a cold agent keeps empty components and regions visible in the editor and forces
+  the accordion open, but gates them on `isContextualEditing`, so the Edit-tab gate is asserted once across
+  every component that gains an editor-only state; it also has no empty-slot placeholder. On the Page Router
+  the same hook call returns `previewMode`, and the cold agent gates on the Edit tab and puts an
+  `emptyPlaceholder` on every slot unaided, so neither check is repeated there. Four checks are shared, each
+  in its SDK's form: slot logic around the editor markers, following the selection (the channel hook /
+  `useUniformContextualEditingState({ global: true })`), items kept mounted, and the playground frame
+  (`decorators` on the Page Router). The App Router adds the Edit-tab gate, `resolveEmptyPlaceholder`, the
+  rich-text hint and a hand-built `_contextualEditing` (8 tests); the Page Router adds a module-scope
+  `wrapperComponent` (5 tests). Vercel sandbox, Claude Code on Sonnet 4.6. App Router: baseline 0/8 in
+  657 s, with-skill 8/8 in 852 s and 8/8 in 636 s. Page Router: baseline 0/5 in 393 s, with-skill 5/5 in
+  440 s and 5/5 in 685 s.
 - **Assertions strip comments before matching**, so an agent that quotes a rule back in a comment is
   not credited — or failed — for agreeing with it.
 - **The automations fixtures use the full discovery skip set** (`.claude`, `.agents`, `.cursor`,

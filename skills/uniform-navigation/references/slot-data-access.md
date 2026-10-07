@@ -110,9 +110,8 @@ in the editor, the `uniform-editor-experience-review` skill, if installed, cover
 Canvas selection.
 
 The same slot can be rendered more than once. Mobile typically drops the rail and renders one
-section per category, reusing the slot each time. There, each section emits only its own
-child, which is fine: every child is still mounted once, in its own section. Keep the `key` on
-whatever you return for the other children, including an empty fragment.
+section per category: render the slot again and wrap every child in its own section, headed by
+the rail label for its `_id`.
 
 ## Technique 3 — role-switch a child with context
 

@@ -150,7 +150,7 @@ test('the carousel follows the Canvas selection', () => {
 test('slides, tab panels and accordion panels stay mounted and reachable', () => {
   const src = code();
   const unmounted = 'rendering only the active item drops the others — and their editor markers — from the DOM';
-  expect(src, unmounted).not.toMatch(/\{\s*(slides|panels)\s*\[\s*\w+\s*\]\s*\}/);
+  expect(src, unmounted).not.toMatch(/\{\s*(slides|panels|items)\s*\[\s*\w+\s*\]\s*\}/);
 
   const accordion = componentCode(/accordion/i);
   expect(accordion, unmounted).not.toMatch(/\b(isOpen|open|expanded)\s*&&\s*\(?\s*</);

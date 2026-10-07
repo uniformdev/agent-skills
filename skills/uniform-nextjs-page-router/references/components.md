@@ -43,7 +43,7 @@ function Hero() {
 
 ### Empty slots in the editor
 
-While editing, Canvas puts a placeholder item into every empty slot. Give each layout-critical slot an `emptyPlaceholder`: a node with the size the first item will take. It renders only in the editor, never to visitors. Without it, the placeholder item goes through `resolveRenderer` like any other component.
+While editing, Canvas puts a placeholder item into every empty slot. Give each layout-critical slot an `emptyPlaceholder`: a node with the size the first item will take. It renders only in the editor, never to visitors, and only in place of what `resolveRenderer` returned for the placeholder item. The default resolver returns a component for it; a custom one that returns `null` for unknown types leaves the slot with no placeholder and no drop target.
 
 ```tsx
 <UniformSlot name="content" emptyPlaceholder={<div style={{ minHeight: 120 }} />} />
@@ -67,6 +67,8 @@ import { useUniformCurrentComponent } from "@uniformdev/canvas-react";
 const { data } = useUniformCurrentComponent();
 const children = data?.slots?.["links"] ?? []; // ComponentInstance[], parameters included
 ```
+
+While editing, an empty slot holds a placeholder item here too, so a rail built from this array gets a blank entry. Drop it with `isComponentPlaceholderId(child._id)` from `@uniformdev/canvas` before building or counting.
 
 Use that for metadata only. Keep rendering the children through `UniformSlot` — rebuilding
 them from their parameters discards personalization, A/B tests, pattern links and the

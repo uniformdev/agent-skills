@@ -4,9 +4,14 @@ import { test, expect } from 'vitest';
 // Apply fixture for `uniform-editor-experience-review` on the Page Router: the twin of
 // `nextjs-editor-experience`, built the way `nextjs-page-router-breadcrumbs` twins `nextjs-breadcrumbs`.
 // Same PROMPT.md, byte for byte — it describes only symptoms, so it ports without a word changing. What
-// differs is the fixture (canvas-next + canvas-react, getServerSideProps, registerUniformComponent) and the
-// four checks only the Page Router has: per-slot `emptyPlaceholder`, the `global` selection hook, a
-// module-scope `wrapperComponent`, and the experimental playground `decorators`.
+// differs is the fixture (canvas-next + canvas-react, getServerSideProps, registerUniformComponent), the Page
+// Router form of the shared checks (the `global` selection hook, the experimental playground `decorators`), and
+// one check only the Page Router has: a module-scope `wrapperComponent`.
+//
+// Two App Router checks are not repeated here, because the baseline passed them: a cold agent reads
+// `previewMode` from the same `useUniformContextualEditingState()` call as `isContextualEditing`, so it gates on
+// the Edit tab unaided, and it puts an `emptyPlaceholder` on every `<UniformSlot>`. The Button, Image, Page and
+// Section seeds stay, so the task is the same on both SDKs.
 //
 //   Button, Image   return null when empty — also in the editor
 //   Section         hand-rolled placeholder-id test; aside hidden while empty; `> * + *` spacing
@@ -72,11 +77,9 @@ function gateHelpers(signal: RegExp): string[] {
   return [...names];
 }
 
-const EDIT_TAB = /previewMode/;
 const ANY_EDITOR_SIGNAL = /previewMode|isContextualEditing/;
 const references = (text: string, signal: RegExp) =>
   signal.test(text) || gateHelpers(signal).some((name) => new RegExp(`\\b${name}\\b`).test(text));
-const usesEditTab = (text: string) => references(text, EDIT_TAB);
 const usesEditorSignal = (text: string) => references(text, ANY_EDITOR_SIGNAL);
 
 // A `{…}` attribute value with its braces balanced. Page Router props hold JSX of their own
@@ -129,68 +132,6 @@ const imports = (src: string, name: string) =>
 const declaresInsideABody = (src: string, name: string) =>
   new RegExp(`^[ \\t]+(?:const|let|var|function\\*?|class)\\s+${escapeName(name)}\\b`, 'm').test(src);
 
-// Placeholders and hints change the look, so they belong to the Edit tab: isContextualEditing is true
-// in the Preview tab too, where authors check the page as visitors see it. One test for every component
-// that gains an editor-only state, so this one gap fails once.
-test('editor-only states are gated on the Edit tab', () => {
-  const gated: [RegExp, string][] = [
-    [/^Button/, 'the empty button'],
-    [/^Image/, 'the image placeholder'],
-    [/^Section/, 'the empty aside'],
-    [/carousel/i, 'stopped autoplay'],
-  ];
-  for (const [name, what] of gated) {
-    expect(
-      componentCode(name),
-      `${what} shows only in the Edit tab — isContextualEditing alone is also true in the Preview tab; ` +
-        'gate on useUniformContextualEditingState().previewMode === "editor"'
-    ).toSatisfy(usesEditTab);
-  }
-});
-
-// The slots the page is laid out in. Each is a vertical content area or its own column, so the skill's
-// opt-out — `emptyPlaceholder={null}`, for an optional slot the layout has no room for — fits none of
-// them. Other slots (slides, tabs, accordion items) are left to the agent.
-const LAYOUT_CRITICAL: [RegExp, string, string][] = [
-  [/^Page/, 'content', "Page's content slot (the page body)"],
-  [/^Section/, 'content', "Section's content slot"],
-  [/^Section/, 'aside', "Section's aside slot (a column of its own)"],
-];
-
-test('layout-critical slots get an emptyPlaceholder', () => {
-  // A placeholder that is present and not switched off. Its size is not asserted: it may come from a
-  // shared helper (`emptyPlaceholder={<SlotPlaceholder minHeight={120} />}`) or a class.
-  const placeholderSet = (tag: string) =>
-    attributeValues(tag, 'emptyPlaceholder').some((v) => !/^(null|undefined)$/.test(v));
-
-  for (const [file, slot, what] of LAYOUT_CRITICAL) {
-    const named = new RegExp(`\\bname\\s*=\\s*(?:"${slot}"|'${slot}'|\\{\\s*["'\`]${slot}["'\`]\\s*\\})`);
-    // UniformSlot itself, or a project helper that renders one (`<SizedSlot name="content" />`).
-    const slots = openingTags(componentCode(file), '[A-Z][\\w.]*Slot').filter(({ text }) => named.test(text));
-    expect(slots.length, `${what} must still be rendered`).toBeGreaterThan(0);
-
-    for (const { tag, text } of slots) {
-      const where =
-        tag === 'UniformSlot'
-          ? [text]
-          : sourceFiles()
-              .filter(({ content }) => declares(content, tag))
-              .flatMap(({ content }) => openingTags(content, 'UniformSlot').map((t) => t.text));
-      expect(
-        where,
-        `${what} needs a sized emptyPlaceholder — on the Page Router each <UniformSlot> takes its own, ` +
-          'e.g. emptyPlaceholder={<div style={{ minHeight: 120 }} />}; without one an empty slot has no ' +
-          'drop target, and null switches it off'
-      ).toSatisfy((tags: string[]) => tags.some(placeholderSet));
-    }
-  }
-
-  expect(
-    code(),
-    'resolveEmptyPlaceholder is the App Router API; the Page Router UniformComposition ignores it'
-  ).not.toMatch(/resolveEmptyPlaceholder/);
-});
-
 test('Section slot logic survives the editor', () => {
   const src = code();
   expect(
@@ -222,7 +163,7 @@ test('the carousel follows the Canvas selection', () => {
 test('slides, tab panels and accordion panels stay mounted and reachable', () => {
   const src = code();
   const unmounted = 'rendering only the active item drops the others — and their editor markers — from the DOM';
-  expect(src, unmounted).not.toMatch(/\{\s*(slides|panels)\s*\[\s*\w+\s*\]\s*\}/);
+  expect(src, unmounted).not.toMatch(/\{\s*(slides|panels|items)\s*\[\s*\w+\s*\]\s*\}/);
 
   const accordion = componentCode(/accordion/i);
   expect(accordion, unmounted).not.toMatch(/\b(isOpen|open|expanded)\s*&&\s*\(?\s*</);

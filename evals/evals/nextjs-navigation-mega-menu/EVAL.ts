@@ -157,14 +157,14 @@ test('wires the composition cache into UniformComposition', () => {
 // this eval is actually about is the render function that picks the active child of a rendered
 // slot by id. Any of these counts: `_id === active` to show it, `_id !== active` to hide the rest,
 // or the child's `_id` attached to its wrapper (`data-panel-id={_id}`) for a client component to
-// pick by.
+// pick by. A bare `key={_id}` is not picking anything.
 test('renders panel content through the slot, active child picked by id', () => {
   const pickingById = sourceFiles()
     .map(({ f, content }) => ({ f, content: stripComments(content) }))
     .filter(
       ({ content }) =>
         /UniformSlot/.test(content) &&
-        /_id\s*[!=]==|[!=]==\s*[^;]{0,40}_id|=\{\s*_id\s*\}|\$\{\s*_id\s*\}/.test(content)
+        /_id\s*[!=]==|[!=]==\s*[^;]{0,40}_id|(?<!\bkey)=\{\s*_id\s*\}|\$\{\s*_id\s*\}/.test(content)
     );
 
   expect(

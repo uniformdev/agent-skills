@@ -1,6 +1,6 @@
 ---
 name: uniform-editor-experience-review
-description: Reviews how a Uniform frontend's components behave in the Canvas visual editor and fixes what it finds — empty components that vanish, missing UniformText, UniformRichText and slot placeholders, carousels, tabs, accordions and modals that authors cannot reach or that move while they edit, and patterns shown bare in the playground — without changing what visitors see. Reports findings grouped by fix type and lets the user pick which to apply. Use when asked to review, audit or improve the editor or authoring experience of a Uniform project; when authors report that components vanish, collapse, cannot be clicked or selected, or slide away in Canvas; when patterns are hard to preview in the playground; or when building a component with empty states, slots or content hidden behind interaction. Covers the Next.js App Router and Page Router SDKs.
+description: Audits and fixes Uniform frontend components in the Canvas visual editor (Next.js App Router and Page Router). Resolves authoring friction—such as disappearing empty states, missing slot and text placeholders, and unreachable interactive elements (carousels, tabs, accordions, modals)—without altering the visitor experience. Use when auditing Uniform editor UX, troubleshooting authoring issues in Canvas, or building components with empty states, slots or hidden content.
 license: MIT
 metadata:
   author: uniformdev
