@@ -134,8 +134,14 @@ function cacheCookie(code: string) {
     const [first, second = ''] = args.split(',');
     return resolve(first) ?? resolve(second);
   };
+  // A helper that writes the header itself (`appendSetCookie(res, `${NAME}=…; Max-Age=…`)`) is a
+  // writer too: each call to it is checked with its own arguments.
+  const writers = [...bodies]
+    .filter(([, body]) => /Set-Cookie|cookies\.set\(|\bsetCookie\(|\bserialize\(/i.test(body))
+    .map(([name]) => name);
   const writes = [
     ...callArgs(code, /(?:cookies\.set|\bsetCookie|\bserialize)\(/g),
+    ...(writers.length ? callArgs(code, new RegExp(`\\b(?:${writers.join('|')})\\(`, 'g')) : []),
     ...[...code.matchAll(/Set-Cookie['"`]?\s*,\s*([\s\S]{0,400}?)\)\s*;/gi)].map((m) => m[1]),
   ].filter((w) => {
     const e = expand(w);
@@ -145,13 +151,14 @@ function cacheCookie(code: string) {
     );
   });
   const names = writes.map(nameOf).filter((n): n is string => !!n);
-  // Read: passed to any call that is not a write (`cookies.get(NAME)`, `readCookie(req, NAME)`),
-  // indexed (`parse(header)[NAME]`) or accessed as a property.
+  // Read: passed to any call that is not a write or a writer helper (`cookies.get(NAME)`,
+  // `readCookie(req, NAME)`), indexed (`parse(header)[NAME]`) or accessed as a property.
   const isRead = (name: string) => {
     const refs = [`['"\`]${name}['"\`]`, ...[...assigned].filter(([, v]) => literal(v) === name).map(([k]) => `\\b${k}\\b`)];
     const ref = `(?:${refs.join('|')})`;
+    const nonReads = ['set', 'setHeader', 'setCookie', 'serialize', 'append', ...writers].join('|');
     return new RegExp(
-      `\\b(?!(?:set|setHeader|setCookie|serialize|append)\\()\\w+\\([^)]*?${ref}|\\[\\s*${ref}|\\.${name}\\b`
+      `\\b(?!(?:${nonReads})\\()\\w+\\([^)]*?${ref}|\\[\\s*${ref}|\\.${name}\\b`
     ).test(code);
   };
   return { written: writes.length > 0, read: names.some(isRead) };

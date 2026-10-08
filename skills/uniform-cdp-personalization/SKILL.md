@@ -1,6 +1,6 @@
 ---
 name: uniform-cdp-personalization
-description: Integrates Customer Data Platform (CDP) profiles—such as Segment—into Uniform personalization as quirks. Audits current quirk setups, implements server-side profile lookups, maps CDP traits and audiences to targetable quirks, stages definitions for deployment, and builds mock profile APIs with switching for local dev and demos. Resolves flickering or delayed CDP personalization. Use when connecting Uniform to Segment/CDPs, mapping audiences to quirks, or building demo persona switchers for Next.js App & Pages routers.
+description: Integrates Customer Data Platform (CDP) profiles into Uniform personalization as quirks. Use when connecting Uniform to a CDP (Segment, mParticle), mapping audiences to quirks, building mock APIs or demo persona switchers for an editor.
 license: MIT
 metadata:
   author: uniformdev
@@ -38,7 +38,7 @@ installed.
    commands → [mapping.md](references/mapping.md#definitions).
 8. **Verify and close**: typecheck; with the mock on, switch through every fixture profile and
    check the quirks applied; on static pages, reload with a profile that picks a non-default variant
-   and check that the console shows no hydration error
+   and confirm the console is clear of hydration errors
    ([wiring.md](references/wiring.md#static-pages)); write the
    [closing report](references/audit.md#the-closing-report).
 
@@ -52,8 +52,8 @@ installed.
 
 ## Resources
 
-- [Audit and questions](references/audit.md) — scope recipes, the questions, when not to ask, the
-  report and the closing report
+- [Audit and questions](references/audit.md) — what the audit looks for, the questions, when to
+  skip them, the report and the closing report
 - [Mapping](references/mapping.md) — what criteria compare, trait types, the mapping function,
   quirk IDs, stale values, definitions and how they reach Uniform
 - [Wiring](references/wiring.md) — where each SDK evaluates personalization, identity, caching,

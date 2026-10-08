@@ -2,8 +2,8 @@
 
 ## Where quirks have to be set
 
-Quirks count only where personalization is evaluated; set anywhere else, they arrive late or
-never.
+Quirks take effect where personalization is evaluated, so set them there. Set anywhere else, they
+arrive late or get lost.
 
 | SDK | Personalization is evaluated | Set CDP quirks |
 |---|---|---|
@@ -13,18 +13,18 @@ never.
 
 ## Identity
 
-Look up by the identity chosen in the [questions](audit.md#questions). A first-time visitor has no
-CDP cookie on the first request, because the CDP's browser library sets it after the page loads:
+Look up by the identity chosen in the [questions](audit.md#questions). The CDP's browser library
+sets its cookie after the page loads, so a first-time visitor's first request arrives without it:
 skip the lookup and render the default variant.
 
 ## App Router
 
 - **Middleware**: pass the quirks per request with `handleUniformRoute({ request, quirks })`.
 - **Browser context**: write the same mapped quirks with `context.update({ quirks })`. Middleware
-  hands its quirks to the browser only through the `ufqc` cookie, which it sets only with consent,
-  and which the browser reads only on the first full page load; the `uniform-nextjs-app-router`
-  skill, if installed, has the details. The cache cookie below is readable on every load,
-  including the first.
+  hands its quirks to the browser through one channel, the `ufqc` cookie: it is set only with
+  consent and read only on the first full page load. The `uniform-nextjs-app-router` skill, if
+  installed, has the details. The cache cookie below is readable on every load, including the
+  first.
 
 ```ts
 export default async function middleware(request: NextRequest) {
@@ -60,8 +60,8 @@ quirks after the CDP library loads, and tell the user the page switches variant 
   called after mount, then `context.update({ quirks })`. The HTML shows the default variant until
   then, and on static pages it must also hydrate as that variant ([below](#static-pages)).
 
-Quirks written in the browser never reach the server unless `NextCookieTransitionDataStore` gets
-`experimental_quirksEnabled: true`; with it, and with consent, server rendering reads them from the
+Quirks written in the browser reach the server only when `NextCookieTransitionDataStore` gets
+`experimental_quirksEnabled: true`. With it, and with consent, server rendering reads them from the
 `ufvdqk` cookie on the next request. The `uniform-nextjs-page-router` skill, if installed, has the
 details.
 
@@ -72,9 +72,9 @@ visitor's stored quirks and scores from local storage as it is created, and `<Pe
 evaluates them in the first render. A returning visitor whose data picks a non-default variant gets
 a hydration error: React discards the server HTML and renders the whole page again in the browser.
 Hydrate with an empty `Context`, then switch to the visitor's after mount. The recipe replaces the
-provider on every page, so use it as is only when no page renders with `enableNextSsr`; when some
-do, keep their `serverUniformContext` and transfer state, and give the empty context only to the
-static pages.
+provider on every page, so it fits a site where every page is static. When some pages render with
+`enableNextSsr`, keep their `serverUniformContext` and transfer state, and give the empty context to
+the static pages alone.
 
 ```tsx
 // pages/_app.tsx. Create the empty one first: each Context constructor registers itself as the one
@@ -96,14 +96,14 @@ function VisitorContext({ children }: { children: ReactNode }) {
 }
 ```
 
-- Its own `partitionKey` keeps it from reading the stored visitor data, and without consent it
-  stores nothing.
+- Its own `partitionKey` keeps it away from the stored visitor data, and `defaultConsent: false`
+  keeps its storage empty.
 - `children` comes from `App`, so after the switch only the components that read the context
   render again.
-- `includeTransferState="never"`: there is no server state to transfer.
+- `includeTransferState="never"`: static pages ship without server state.
 - `useQuirks()` keeps the quirks of the context it mounted with. A component that calls it before
-  the switch shows the empty context's `{}` until the visitor's quirks next change; render it only
-  after the switch.
+  the switch shows the empty context's `{}` until the visitor's quirks next change; render it after
+  the switch.
 - Give the component that writes CDP quirks the visitor's `Context` as a prop. The provider's is
   the empty one until hydration: quirks written there are lost, and the effect runs again after the
   switch, looking the visitor up twice.
@@ -114,25 +114,27 @@ Keep the mapped quirks in a cookie set on the response: the identity they belong
 and an expiry. Look up again only when the identity changes or the entry expires. Middleware runs
 on every request, and profile APIs are rate-limited
 ([Segment's limit](segment.md#endpoint-and-auth)). Cache "no profile" too, since new visitors are
-most of the traffic. Never put raw traits or the CDP token in the cookie. Leave out `httpOnly` so
-the browser can read the quirks, on the App Router and in the browser-only path.
+most of the traffic. Keep raw traits and the CDP token on the server: the cookie holds the mapped
+quirks. Leave `httpOnly` off so the browser can read them, on the App Router and in the
+browser-only path.
 
 In the browser-only path the browser decides when to call the lookup route, so the cookie also
 holds a key built from the cookies that identify the visitor: the CDP's IDs and the demo override
 ([mock-profile-api.md](mock-profile-api.md#switching-profiles)). Apply the cached quirks while that
 key matches and the cookie lives; otherwise call the route, which sets a new cookie. Check again on
 every client-side navigation: the CDP library sets its ID after the first page loads, and the Page
-Router does not reload.
+Router navigates without a reload.
 
 ## Failures
 
-A 404 means no profile: map it as one (`traitsToQuirks(null)`) and cache it. On a timeout, a 429
-or a 5xx, keep the cached quirks or none, cache nothing, and do not throw.
+A 404 means the visitor has no profile: map it as one (`traitsToQuirks(null)`) and cache it. On a
+timeout, a 429 or a 5xx, catch the error, keep the quirks already cached (if any), leave the cache
+unchanged, and let the page render.
 
 ## Consent
 
-Uniform personalizes without consent; consent decides whether quirks are stored in cookies. The
-App Router middleware has no option to require consent; on the Page Router,
-`new Context({ requireConsentForPersonalization: true })` does. Follow the project's consent
-handling (on the App Router, `handleUniformRoute` takes `defaultConsent` per request). If the CDP
-lookup itself needs consent, skip it without consent.
+Uniform personalizes visitors with or without consent; consent decides whether quirks are stored
+in cookies. On the Page Router, `new Context({ requireConsentForPersonalization: true })` makes
+personalization wait for consent; the App Router middleware always personalizes. Follow the
+project's consent handling (on the App Router, `handleUniformRoute` takes `defaultConsent` per
+request). If the CDP lookup itself needs consent, run it only for visitors who gave it.
