@@ -82,9 +82,9 @@ const codeOf = (files: string[]) => files.filter(isCode).map((f) => stripComment
 const documentCode = () => (DOCUMENT ? codeOf(closure(DOCUMENT)) : '');
 
 // Identifiers mapped to what they were assigned, so a value or option held in a constant is read
-// through it.
+// through it. A template literal is taken whole: a Set-Cookie string separates its attributes with `;`.
 const assignments = (code: string) =>
-  new Map([...code.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*([^;]{0,400})/g)].map((m) => [m[1], m[2]]));
+  new Map([...code.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*(`(?:\\[\s\S]|[^`\\])*`|[^;]{0,400})/g)].map((m) => [m[1], m[2]]));
 
 // The argument list of every call the pattern opens, up to its balanced closing parenthesis, so
 // nested calls in the options (`maxAge: Math.max(0, Math.floor((exp - Date.now()) / 1000))`) do
@@ -132,7 +132,10 @@ function cacheCookie(code: string) {
     if (args.trim().startsWith('{')) return resolve(args.match(/\bname\s*:\s*([^,}]+)/)?.[1] ?? 'name');
     // nookies' setCookie(ctx, name, value, options) takes the request context first
     const [first, second = ''] = args.split(',');
-    return resolve(first) ?? resolve(second);
+    // A header built in a variable (`res.setHeader('Set-Cookie', [...existing, cookie])`): the name
+    // comes from what the variable holds.
+    const built = expand(args).match(/\$\{\s*(\w+)\s*\}=/)?.[1] ?? expand(args).match(/['"`]\s*([\w.-]+)=/)?.[1];
+    return resolve(first) ?? resolve(second) ?? (built && (resolve(built) ?? built));
   };
   // A helper that writes the header itself (`appendSetCookie(res, `${NAME}=…; Max-Age=…`)`) is a
   // writer too: each call to it is checked with its own arguments.

@@ -15,7 +15,7 @@ a personalization criterion compares with.
 
 | CDP trait | Quirk value |
 |---|---|
-| Audience (boolean) | `"true"` when the trait is `true`, otherwise `"false"`, so `= false` also matches a visitor who never joined and carries no trait at all ([Segment](segment.md#audiences-and-computed-traits)) |
+| Audience (boolean) | `"true"` when the trait is `true`, otherwise `"false"`, so `= false` also matches a visitor whose profile lacks the trait ([Segment](segment.md#audiences-and-computed-traits)) |
 | Enum | The value normalised to the definition's options; anything else `""` |
 | List | One boolean quirk per value marketing targets. To keep the list in one quirk instead, the user creates a signal with a contains criterion in Uniform |
 | Object, identifier, personal data | Left out of the mapping: quirks live in browser storage and cookies |

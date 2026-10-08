@@ -25,7 +25,7 @@ Search the source of every package, skipping `node_modules` and build output, fo
   `page` or `track` calls, `cdn.segment.com`, the `ajs_anonymous_id` and `ajs_user_id` cookies,
   `collections/users/profiles`. Audit an existing lookup and build on it.
 - **Consent handling** (`defaultConsent`, `storeConsent`). It decides whether quirks persist in
-  cookies, and whether to ask the consent question.
+  cookies, and whether to ask the consent question below.
 
 The CDP's browser library sets the visitor ID every lookup needs (Segment: Analytics.js and its
 `ajs_*` cookies). Report it under Broken and ask the library question below if nothing loads that
@@ -63,10 +63,10 @@ defaults marked. Ask the choices that have more than one valid answer:
 | What to build (multi-select) | Lookup and mapping, staged quirk definitions, and the mock when CDP credentials are missing. Creating the definitions in Uniform now ([mapping.md](mapping.md#getting-them-into-uniform)) and, with CDP credentials, a [demo against the real CDP](mock-profile-api.md#demo-against-the-real-cdp) are options, off by default | — |
 | Demo UI | The user picks: list the four variants and their costs in [mock-profile-api.md](mock-profile-api.md#demo-ui) | — |
 | Identity (when the site has logins) | User ID when logged in, otherwise the CDP's anonymous ID | Email puts personal data in URLs and logs |
+| Consent (when the project has no consent handling) | Look up every visitor the CDP identifies, and keep Uniform's `defaultConsent: false`: its own data stays in memory until the visitor consents | The cache cookie holds each visitor's mapped quirks. Where the site's privacy rules ask for consent first, run the lookup only for visitors who gave it ([wiring.md](wiring.md#consent)); the site then needs a way to collect it |
 
-When the project handles consent, follow its handling and skip the consent question. Bucket
-thresholds and the cache period go in the mapping plan below, where the user confirms them with
-everything else.
+Bucket thresholds and the cache period go in the mapping plan below, where the user confirms them
+with everything else.
 
 ## When to skip the questions
 
