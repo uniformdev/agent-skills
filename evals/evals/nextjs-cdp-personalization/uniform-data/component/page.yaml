@@ -1,0 +1,12 @@
+id: page
+name: Page
+icon: screen
+canBeComposition: true
+parameters: []
+slots:
+  - id: content
+    name: Content
+    allowedComponents:
+      - hero
+      - $personalization
+    inheritAllowedComponents: false

@@ -1,0 +1,11 @@
+id: hero
+name: Hero
+icon: rectangle-rounded
+parameters:
+  - id: title
+    name: Title
+    type: text
+  - id: subtitle
+    name: Subtitle
+    type: text
+slots: []

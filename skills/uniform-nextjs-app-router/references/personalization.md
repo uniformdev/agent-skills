@@ -8,7 +8,7 @@ Client-side hooks let you read and update the visitor's Uniform context (quirks 
 
 ## useUniformContext hook
 
-Access and update the context on the client. The `context` object may be `undefined` while the client-side context initializes — always check before using it:
+Access and update the context on the client. The `context` object may be `undefined` while the client-side context initializes — always check before using it. The hook reads the context that the page's `UniformComposition` creates, so a client component outside the composition (in the root layout, for example) can use it too; on a page with no composition, `context` stays `undefined`.
 
 ```tsx
 "use client";
@@ -155,6 +155,13 @@ await precomputeComposition({
 ## Setting quirks in middleware
 
 Quirks can also be injected server-side in middleware (e.g. from headers or cookies) — see `references/routing.md`. On Vercel, geo-IP quirks are populated automatically (below).
+
+Middleware quirks pick the variant in the first HTML. The browser then evaluates personalization again whenever its context's quirks or scores change, using only the quirks that context holds. Middleware hands its quirks to that context through one cookie, `ufqc`:
+
+- written only when the visitor has consented (a `ufvd` cookie, or `defaultConsent: true`), only with the quirks that changed in that request, and expiring after 10 seconds;
+- read and deleted on the first full page load only; client-side navigations do not read it, and a custom `clientContextComponent` reads it only through `useInitUniformContext`.
+
+To keep middleware quirks in the browser regardless of consent, write the same values with `context.update({ quirks })` from a client component, reading them from a cookie your middleware sets.
 
 ## Vercel geo-IP quirks
 

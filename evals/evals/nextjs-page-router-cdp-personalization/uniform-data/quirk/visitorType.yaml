@@ -1,0 +1,6 @@
+id: visitorType
+name: Visitor type
+description: Set by the newsletter form after a successful sign-up.
+options:
+  - name: Subscriber
+    value: subscriber
